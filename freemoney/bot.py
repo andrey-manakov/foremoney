@@ -37,7 +37,7 @@ from .ui import items_keyboard
 
 TX_LIST, TX_DETAILS, TX_EDIT_AMOUNT = range(9, 12)
 
-MAIN_MENU, = range(12, 13)
+SETTINGS_MENU, DASHBOARD_ACCOUNTS, AG_TYPE_SELECT, AG_GROUPS, AG_GROUP_MENU, AG_GROUP_RENAME, AG_ADD_GROUP_NAME, AG_ACCOUNTS, AG_ADD_ACCOUNT_NAME, ACCOUNT_MENU, ACCOUNT_RENAME = range(12, 23)
 
 
 class FinanceBot:
@@ -317,16 +317,322 @@ class FinanceBot:
         ]
         return ReplyKeyboardMarkup(buttons, resize_keyboard=True)
 
+    def settings_menu_keyboard(self) -> ReplyKeyboardMarkup:
+        buttons = [
+            [KeyboardButton("Dashboard accounts")],
+            [KeyboardButton("Account groups")],
+            [KeyboardButton("Recreate database")],
+            [KeyboardButton("Back")],
+        ]
+        return ReplyKeyboardMarkup(buttons, resize_keyboard=True)
+
+    def dashboard_accounts_keyboard(self, user_id: int, selected: set[int]) -> InlineKeyboardMarkup:
+        accounts = self.db.all_accounts(user_id)
+        buttons = []
+        for acc in accounts:
+            prefix = "\u2714 " if acc["id"] in selected else ""
+            label = f"{prefix}{acc['group_name']}: {acc['name']}"
+            buttons.append([InlineKeyboardButton(label, callback_data=f"dashacc:{acc['id']}")])
+        buttons.append([InlineKeyboardButton("Save", callback_data="dashsave")])
+        return InlineKeyboardMarkup(buttons)
+
+    def account_groups_keyboard(self, user_id: int, type_id: int) -> InlineKeyboardMarkup:
+        groups = self.db.account_groups(user_id, type_id)
+        buttons = [
+            [InlineKeyboardButton(g["name"], callback_data=f"aggroup:{g['id']}")]
+            for g in groups
+        ]
+        buttons.append([InlineKeyboardButton("+ group", callback_data="agaddgroup")])
+        buttons.append([InlineKeyboardButton("Back", callback_data="agtypeback")])
+        return InlineKeyboardMarkup(buttons)
+
+    def accounts_keyboard(self, user_id: int, group_id: int) -> InlineKeyboardMarkup:
+        accs = self.db.accounts(user_id, group_id)
+        buttons = [
+            [InlineKeyboardButton(a["name"], callback_data=f"acc:{a['id']}")]
+            for a in accs
+        ]
+        buttons.append([InlineKeyboardButton("+ account", callback_data="addacc")])
+        buttons.append([InlineKeyboardButton("Rename group", callback_data="grename")])
+        buttons.append([InlineKeyboardButton("Delete group", callback_data="gdelete")])
+        buttons.append([InlineKeyboardButton("Back", callback_data="groupsback")])
+        return InlineKeyboardMarkup(buttons)
+
     async def handle_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         text = update.message.text
         if text == "Dashboard":
-            await update.message.reply_text("Finance available: TODO")
+            await self.show_dashboard(update, context)
         elif text == "Settings":
-            await update.message.reply_text("Not implemented yet")
+            return await self.start_settings(update, context)
         else:
             await update.message.reply_text(
                 "Use menu", reply_markup=self.main_menu_keyboard()
             )
+
+    async def show_dashboard(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        user_id = update.effective_user.id
+        val = self.db.get_setting(user_id, "dashboard_accounts")
+        if not val:
+            await update.message.reply_text(
+                "No accounts selected for dashboard. Use Settings to configure."
+            )
+            return
+        account_ids = [int(v) for v in val.split(",") if v]
+        total = self.db.accounts_balance(user_id, account_ids)
+        await update.message.reply_text(f"Finance available: {total}")
+
+    async def start_settings(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        await update.message.reply_text(
+            "Settings:", reply_markup=self.settings_menu_keyboard()
+        )
+        return SETTINGS_MENU
+
+    async def settings_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        text = update.message.text
+        if text == "Dashboard accounts":
+            return await self.start_dashboard_accounts(update, context)
+        if text == "Account groups":
+            return await self.start_account_groups(update, context)
+        if text == "Recreate database":
+            return await self.recreate_database(update, context)
+        if text == "Back":
+            await update.message.reply_text(
+                "Back to menu", reply_markup=self.main_menu_keyboard()
+            )
+            return ConversationHandler.END
+        await update.message.reply_text("Use menu", reply_markup=self.settings_menu_keyboard())
+        return SETTINGS_MENU
+
+    async def start_dashboard_accounts(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        user_id = update.effective_user.id
+        val = self.db.get_setting(user_id, "dashboard_accounts") or ""
+        selected = set(int(v) for v in val.split(",") if v)
+        context.user_data["dash_sel"] = selected
+        await update.message.reply_text(
+            "Select accounts:",
+            reply_markup=self.dashboard_accounts_keyboard(user_id, selected),
+        )
+        return DASHBOARD_ACCOUNTS
+
+    async def toggle_dashboard_account(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        query = update.callback_query
+        await query.answer()
+        aid = int(query.data.split(":")[1])
+        selected: set[int] = context.user_data.get("dash_sel", set())
+        if aid in selected:
+            selected.remove(aid)
+        else:
+            selected.add(aid)
+        context.user_data["dash_sel"] = selected
+        await query.edit_message_reply_markup(
+            reply_markup=self.dashboard_accounts_keyboard(update.effective_user.id, selected)
+        )
+        return DASHBOARD_ACCOUNTS
+
+    async def save_dashboard_accounts(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        query = update.callback_query
+        await query.answer()
+        user_id = update.effective_user.id
+        selected: set[int] = context.user_data.get("dash_sel", set())
+        val = ",".join(str(v) for v in selected)
+        self.db.set_setting(user_id, "dashboard_accounts", val)
+        await query.message.reply_text("Saved", reply_markup=self.settings_menu_keyboard())
+        return SETTINGS_MENU
+
+    async def recreate_database(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        user_id = update.effective_user.id
+        self.db.conn.close()
+        if self.settings.database_path.exists():
+            self.settings.database_path.unlink()
+        self.db = Database(self.settings.database_path)
+        seed(self.db, user_id)
+        await update.message.reply_text("Database recreated")
+        return SETTINGS_MENU
+
+    async def start_account_groups(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        types = self.db.account_types()
+        await update.message.reply_text(
+            "Select account type", reply_markup=items_keyboard(types, "agtype")
+        )
+        return AG_TYPE_SELECT
+
+    async def ag_type_selected(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        query = update.callback_query
+        await query.answer()
+        type_id = int(query.data.split(":")[1])
+        context.user_data["atype"] = type_id
+        await query.message.reply_text(
+            "Select group",
+            reply_markup=self.account_groups_keyboard(update.effective_user.id, type_id),
+        )
+        return AG_GROUPS
+
+    async def ag_add_group_prompt(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        query = update.callback_query
+        await query.answer()
+        await query.message.reply_text("Enter group name")
+        return AG_ADD_GROUP_NAME
+
+    async def ag_add_group_name(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        name = update.message.text.strip()
+        user_id = update.effective_user.id
+        type_id = context.user_data["atype"]
+        self.db.add_account_group(user_id, type_id, name)
+        await update.message.reply_text(
+            "Group added",
+            reply_markup=self.account_groups_keyboard(user_id, type_id),
+        )
+        return AG_GROUPS
+
+    async def ag_select_group(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        query = update.callback_query
+        await query.answer()
+        gid = int(query.data.split(":")[1])
+        context.user_data["group_id"] = gid
+        await query.message.reply_text(
+            "Accounts:",
+            reply_markup=self.accounts_keyboard(update.effective_user.id, gid),
+        )
+        return AG_ACCOUNTS
+
+    async def ag_type_back(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        query = update.callback_query
+        await query.answer()
+        types = self.db.account_types()
+        await query.message.reply_text(
+            "Select account type",
+            reply_markup=items_keyboard(types, "agtype"),
+        )
+        return AG_TYPE_SELECT
+
+    async def groups_back(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        query = update.callback_query
+        await query.answer()
+        type_id = context.user_data["atype"]
+        await query.message.reply_text(
+            "Select group",
+            reply_markup=self.account_groups_keyboard(update.effective_user.id, type_id),
+        )
+        return AG_GROUPS
+
+    async def grename_prompt(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        query = update.callback_query
+        await query.answer()
+        await query.message.reply_text("Enter new group name")
+        return AG_GROUP_RENAME
+
+    async def grename(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        name = update.message.text.strip()
+        gid = context.user_data["group_id"]
+        user_id = update.effective_user.id
+        self.db.update_account_group_name(user_id, gid, name)
+        await update.message.reply_text(
+            "Group renamed",
+            reply_markup=self.accounts_keyboard(user_id, gid),
+        )
+        return AG_ACCOUNTS
+
+    async def gdelete(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        query = update.callback_query
+        await query.answer()
+        gid = context.user_data["group_id"]
+        user_id = update.effective_user.id
+        await self._delete_group(user_id, gid)
+        type_id = context.user_data["atype"]
+        await query.message.reply_text(
+            "Group deleted",
+            reply_markup=self.account_groups_keyboard(user_id, type_id),
+        )
+        return AG_GROUPS
+
+    async def acc_select(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        query = update.callback_query
+        await query.answer()
+        aid = int(query.data.split(":")[1])
+        context.user_data["account_id"] = aid
+        await query.message.reply_text(
+            "Account menu",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("Rename", callback_data="renacc")],
+                [InlineKeyboardButton("Delete", callback_data="delacc")],
+                [InlineKeyboardButton("Back", callback_data="accback")],
+            ]),
+        )
+        return ACCOUNT_MENU
+
+    async def acc_add_prompt(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        query = update.callback_query
+        await query.answer()
+        await query.message.reply_text("Enter account name")
+        return AG_ADD_ACCOUNT_NAME
+
+    async def acc_add_name(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        name = update.message.text.strip()
+        gid = context.user_data["group_id"]
+        user_id = update.effective_user.id
+        self.db.add_account(user_id, gid, name)
+        await update.message.reply_text(
+            "Account added",
+            reply_markup=self.accounts_keyboard(user_id, gid),
+        )
+        return AG_ACCOUNTS
+
+    async def account_rename_prompt(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        query = update.callback_query
+        await query.answer()
+        await query.message.reply_text("Enter new name")
+        return ACCOUNT_RENAME
+
+    async def account_rename(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        name = update.message.text.strip()
+        aid = context.user_data["account_id"]
+        user_id = update.effective_user.id
+        self.db.update_account_name(user_id, aid, name)
+        gid = context.user_data["group_id"]
+        await update.message.reply_text(
+            "Account renamed",
+            reply_markup=self.accounts_keyboard(user_id, gid),
+        )
+        return AG_ACCOUNTS
+
+    async def account_delete(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        query = update.callback_query
+        await query.answer()
+        aid = context.user_data["account_id"]
+        gid = context.user_data["group_id"]
+        user_id = update.effective_user.id
+        await self._delete_account(user_id, aid)
+        await query.message.reply_text(
+            "Account deleted",
+            reply_markup=self.accounts_keyboard(user_id, gid),
+        )
+        return AG_ACCOUNTS
+
+    async def account_menu_back(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        query = update.callback_query
+        await query.answer()
+        gid = context.user_data["group_id"]
+        await query.message.reply_text(
+            "Accounts:",
+            reply_markup=self.accounts_keyboard(update.effective_user.id, gid),
+        )
+        return AG_ACCOUNTS
+
+    # ----- helpers for deleting with correction -----
+    async def _delete_account(self, user_id: int, account_id: int) -> None:
+        bal = self.db.account_balance(user_id, account_id)
+        if bal != 0:
+            corr = self.db.correction_account(user_id)
+            if bal > 0:
+                self.db.add_transaction(user_id, account_id, corr, bal)
+            else:
+                self.db.add_transaction(user_id, corr, account_id, -bal)
+        self.db.archive_account(user_id, account_id)
+
+    async def _delete_group(self, user_id: int, group_id: int) -> None:
+        for acc in self.db.accounts(user_id, group_id):
+            await self._delete_account(user_id, acc["id"])
+        self.db.archive_account_group(user_id, group_id)
 
     def build_app(self) -> Application:
         application = Application.builder().token(self.settings.token).build()
@@ -373,6 +679,47 @@ class FinanceBot:
             per_message=True,
         )
         application.add_handler(tx_conv)
+
+        settings_conv = ConversationHandler(
+            entry_points=[
+                MessageHandler(filters.Regex("^Settings$"), self.start_settings),
+                CallbackQueryHandler(self.start_settings, pattern="^opensettings$")
+            ],
+            states={
+                SETTINGS_MENU: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.settings_menu)],
+                DASHBOARD_ACCOUNTS: [
+                    CallbackQueryHandler(self.toggle_dashboard_account, pattern="^dashacc:"),
+                    CallbackQueryHandler(self.save_dashboard_accounts, pattern="^dashsave$")
+                ],
+                AG_TYPE_SELECT: [
+                    CallbackQueryHandler(self.ag_type_selected, pattern="^agtype:")
+                ],
+                AG_GROUPS: [
+                    CallbackQueryHandler(self.ag_select_group, pattern="^aggroup:"),
+                    CallbackQueryHandler(self.ag_add_group_prompt, pattern="^agaddgroup$"),
+                    CallbackQueryHandler(self.ag_type_back, pattern="^agtypeback$")
+                ],
+                AG_ADD_GROUP_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.ag_add_group_name)],
+                AG_ACCOUNTS: [
+                    CallbackQueryHandler(self.acc_select, pattern="^acc:"),
+                    CallbackQueryHandler(self.acc_add_prompt, pattern="^addacc$"),
+                    CallbackQueryHandler(self.grename_prompt, pattern="^grename$"),
+                    CallbackQueryHandler(self.gdelete, pattern="^gdelete$"),
+                    CallbackQueryHandler(self.groups_back, pattern="^groupsback$")
+                ],
+                AG_GROUP_RENAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.grename)],
+                AG_ADD_ACCOUNT_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.acc_add_name)],
+                ACCOUNT_MENU: [
+                    CallbackQueryHandler(self.account_rename_prompt, pattern="^renacc$"),
+                    CallbackQueryHandler(self.account_delete, pattern="^delacc$"),
+                    CallbackQueryHandler(self.account_menu_back, pattern="^accback$")
+                ],
+                ACCOUNT_RENAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.account_rename)],
+            },
+            fallbacks=[CommandHandler("cancel", self.cancel)],
+            per_message=True,
+        )
+        application.add_handler(settings_conv)
 
         application.add_handler(
             MessageHandler(
