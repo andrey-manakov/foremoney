@@ -10,9 +10,14 @@ from telegram.ext import ContextTypes, ConversationHandler
 
 from .ui import items_reply_keyboard
 from .states import (
-    FROM_TYPE, FROM_GROUP, FROM_ACCOUNT,
-    TO_TYPE, TO_GROUP, TO_ACCOUNT,
-    AMOUNT, SUMMARY, ADD_ACCOUNT_NAME,
+    FROM_TYPE,
+    FROM_GROUP,
+    FROM_ACCOUNT,
+    TO_TYPE,
+    TO_GROUP,
+    TO_ACCOUNT,
+    AMOUNT,
+    ADD_ACCOUNT_NAME,
 )
 
 class TransactionCreateMixin:
@@ -23,7 +28,7 @@ class TransactionCreateMixin:
         context.user_data["from_type_map"] = {t["name"]: t["id"] for t in types}
         await update.message.reply_text(
             "Select source account type",
-            reply_markup=items_reply_keyboard(types, ["Cancel"]),
+            reply_markup=items_reply_keyboard(types, ["Cancel"], columns=2),
         )
         return FROM_TYPE
 
@@ -44,7 +49,7 @@ class TransactionCreateMixin:
         context.user_data["from_group_map"] = {g["name"]: g["id"] for g in groups}
         await update.message.reply_text(
             "Select source account group",
-            reply_markup=items_reply_keyboard(groups, ["Back", "Cancel"]),
+            reply_markup=items_reply_keyboard(groups, ["Back", "Cancel"], columns=2),
         )
         return FROM_GROUP
 
@@ -68,7 +73,7 @@ class TransactionCreateMixin:
         context.user_data["account_prefix"] = "from"
         await update.message.reply_text(
             "Select source account",
-            reply_markup=items_reply_keyboard(accounts, ["+ account", "Back", "Cancel"]),
+            reply_markup=items_reply_keyboard(accounts, ["+ account", "Back", "Cancel"], columns=2),
         )
         return FROM_ACCOUNT
 
@@ -90,7 +95,7 @@ class TransactionCreateMixin:
             context.user_data["account_prefix"] = prefix
             await update.message.reply_text(
                 "Select account",
-                reply_markup=items_reply_keyboard(accounts, ["+ account", "Back", "Cancel"]),
+                reply_markup=items_reply_keyboard(accounts, ["+ account", "Back", "Cancel"], columns=2),
             )
             return FROM_ACCOUNT if prefix == "from" else TO_ACCOUNT
         name = text
@@ -101,7 +106,7 @@ class TransactionCreateMixin:
         context.user_data["account_prefix"] = prefix
         await update.message.reply_text(
             "Select account",
-            reply_markup=items_reply_keyboard(accounts, ["+ account", "Back", "Cancel"]),
+            reply_markup=items_reply_keyboard(accounts, ["+ account", "Back", "Cancel"], columns=2),
         )
         return FROM_ACCOUNT if prefix == "from" else TO_ACCOUNT
 
@@ -119,7 +124,7 @@ class TransactionCreateMixin:
             context.user_data["from_group_map"] = {g["name"]: g["id"] for g in groups}
             await update.message.reply_text(
                 "Select source account group",
-                reply_markup=items_reply_keyboard(groups, ["Back", "Cancel"]),
+                reply_markup=items_reply_keyboard(groups, ["Back", "Cancel"], columns=2),
             )
             return FROM_GROUP
         if text == "+ account":
@@ -137,7 +142,7 @@ class TransactionCreateMixin:
         context.user_data["to_type_map"] = {t["name"]: t["id"] for t in types}
         await update.message.reply_text(
             "Select destination account type",
-            reply_markup=items_reply_keyboard(types, ["Back", "Cancel"]),
+            reply_markup=items_reply_keyboard(types, ["Back", "Cancel"], columns=2),
         )
         return TO_TYPE
 
@@ -156,7 +161,7 @@ class TransactionCreateMixin:
             context.user_data["account_prefix"] = "from"
             await update.message.reply_text(
                 "Select source account",
-                reply_markup=items_reply_keyboard(accounts, ["+ account", "Back", "Cancel"]),
+                reply_markup=items_reply_keyboard(accounts, ["+ account", "Back", "Cancel"], columns=2),
             )
             return FROM_ACCOUNT
         type_map = context.user_data.get("to_type_map", {})
@@ -169,7 +174,7 @@ class TransactionCreateMixin:
         context.user_data["to_group_map"] = {g["name"]: g["id"] for g in groups}
         await update.message.reply_text(
             "Select destination account group",
-            reply_markup=items_reply_keyboard(groups, ["Back", "Cancel"]),
+            reply_markup=items_reply_keyboard(groups, ["Back", "Cancel"], columns=2),
         )
         return TO_GROUP
 
@@ -185,7 +190,7 @@ class TransactionCreateMixin:
             context.user_data["to_type_map"] = {t["name"]: t["id"] for t in types}
             await update.message.reply_text(
                 "Select destination account type",
-                reply_markup=items_reply_keyboard(types, ["Back", "Cancel"]),
+                reply_markup=items_reply_keyboard(types, ["Back", "Cancel"], columns=2),
             )
             return TO_TYPE
         group_map = context.user_data.get("to_group_map", {})
@@ -199,7 +204,7 @@ class TransactionCreateMixin:
         context.user_data["account_prefix"] = "to"
         await update.message.reply_text(
             "Select destination account",
-            reply_markup=items_reply_keyboard(accounts, ["+ account", "Back", "Cancel"]),
+            reply_markup=items_reply_keyboard(accounts, ["+ account", "Back", "Cancel"], columns=2),
         )
         return TO_ACCOUNT
 
@@ -217,7 +222,7 @@ class TransactionCreateMixin:
             context.user_data["to_group_map"] = {g["name"]: g["id"] for g in groups}
             await update.message.reply_text(
                 "Select destination account group",
-                reply_markup=items_reply_keyboard(groups, ["Back", "Cancel"]),
+                reply_markup=items_reply_keyboard(groups, ["Back", "Cancel"], columns=2),
             )
             return TO_GROUP
         if text == "+ account":
@@ -256,7 +261,7 @@ class TransactionCreateMixin:
             context.user_data["account_prefix"] = "to"
             await update.message.reply_text(
                 "Select destination account",
-                reply_markup=items_reply_keyboard(accounts, ["+ account", "Back", "Cancel"]),
+                reply_markup=items_reply_keyboard(accounts, ["+ account", "Back", "Cancel"], columns=2),
             )
             return TO_ACCOUNT
         try:
@@ -278,35 +283,10 @@ class TransactionCreateMixin:
             context.user_data["tx_id"] = tx_id
         tx = self.db.transaction(user_id, tx_id)
         await update.message.reply_text(
-            f"{tx['from_name']} - {tx['amount']} -> {tx['to_name']}",
-            reply_markup=InlineKeyboardMarkup(
-                [
-                    [InlineKeyboardButton("Edit", callback_data="edit")],
-                    [InlineKeyboardButton("Delete", callback_data="delete")],
-                ]
-            ),
+            f"{tx['from_name']} - {tx['amount']} -> {tx['to_name']}"
         )
-        return SUMMARY
-
-    async def summary_action(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-        """Handle Edit/Delete actions on the transaction summary."""
-        query = update.callback_query
-        await query.answer()
-        user_id = update.effective_user.id
-        tx_id = context.user_data.get("tx_id")
-        if query.data == "delete" and tx_id:
-            self.db.delete_transaction(user_id, tx_id)
-            await query.message.reply_text("Transaction deleted")
-            return ConversationHandler.END
-        if query.data == "edit" and tx_id:
-            context.user_data["editing"] = True
-            await query.message.reply_text(
-                "Enter amount",
-                reply_markup=ReplyKeyboardMarkup(
-                    [[KeyboardButton("Back"), KeyboardButton("Cancel")]],
-                    resize_keyboard=True,
-                ),
-            )
-            return AMOUNT
-        return SUMMARY
+        await update.message.reply_text(
+            "Transaction saved", reply_markup=self.main_menu_keyboard()
+        )
+        return ConversationHandler.END
 

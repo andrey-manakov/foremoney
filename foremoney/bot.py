@@ -45,7 +45,6 @@ class FinanceBot(
                 TO_ACCOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.to_account)],
                 AMOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.amount)],
                 ADD_ACCOUNT_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.add_account_name)],
-                SUMMARY: [CallbackQueryHandler(self.summary_action, pattern="^(edit|delete)$")],
             },
             fallbacks=[CommandHandler("cancel", self.cancel)],
             allow_reentry=True,
