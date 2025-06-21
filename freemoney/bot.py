@@ -358,6 +358,7 @@ class FinanceBot:
             },
             fallbacks=[CommandHandler("cancel", self.cancel)],
             per_message=True,
+            allow_reentry=True,
         )
         application.add_handler(create_tx_conv)
 

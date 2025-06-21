@@ -15,7 +15,8 @@ SCHEMA = [
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL,
         type_id INTEGER NOT NULL REFERENCES account_types(id),
-        name TEXT NOT NULL
+        name TEXT NOT NULL,
+        UNIQUE(user_id, type_id, name)
     );
     """,
     """
