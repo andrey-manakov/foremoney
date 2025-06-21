@@ -57,10 +57,8 @@ class MenuMixin:
 
     def dashboard_menu_keyboard(self) -> ReplyKeyboardMarkup:
         buttons = [
-            [KeyboardButton("Cash available")],
-            [KeyboardButton("Accounts")],
-            [KeyboardButton("Forecast")],
-            [KeyboardButton("Back")],
+            [KeyboardButton("Cash available"), KeyboardButton("Accounts")],
+            [KeyboardButton("Forecast"), KeyboardButton("Back")],
         ]
         return ReplyKeyboardMarkup(buttons, resize_keyboard=True)
 
