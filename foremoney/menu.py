@@ -66,19 +66,17 @@ class MenuMixin:
 
     def dashboard_account_menu_keyboard(self) -> ReplyKeyboardMarkup:
         buttons = [
-            [KeyboardButton("Account groups")],
-            [KeyboardButton("Structure")],
-            [KeyboardButton("Dynamics")],
-            [KeyboardButton("Back"), KeyboardButton("Cancel")],
+            [KeyboardButton("Account groups"), KeyboardButton("Structure")],
+            [KeyboardButton("Dynamics"), KeyboardButton("Back")],
+            [KeyboardButton("Cancel")],
         ]
         return ReplyKeyboardMarkup(buttons, resize_keyboard=True)
 
     def dashboard_group_menu_keyboard(self) -> ReplyKeyboardMarkup:
         buttons = [
-            [KeyboardButton("Accounts")],
-            [KeyboardButton("Structure")],
-            [KeyboardButton("Dynamics")],
-            [KeyboardButton("Back"), KeyboardButton("Cancel")],
+            [KeyboardButton("Accounts"), KeyboardButton("Structure")],
+            [KeyboardButton("Dynamics"), KeyboardButton("Back")],
+            [KeyboardButton("Cancel")],
         ]
         return ReplyKeyboardMarkup(buttons, resize_keyboard=True)
 
