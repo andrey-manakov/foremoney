@@ -86,13 +86,18 @@ class FinanceBot(
                 SETTINGS_MENU: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.settings_menu)],
                 DASHBOARD_ACCOUNTS: [
                     CallbackQueryHandler(self.toggle_dashboard_account, pattern="^dashacc:"),
-                    CallbackQueryHandler(self.save_dashboard_accounts, pattern="^dashsave$")
+                    CallbackQueryHandler(self.save_dashboard_accounts, pattern="^dashsave$"),
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, self.settings_menu),
                 ],
-                AG_TYPE_SELECT: [CallbackQueryHandler(self.ag_type_selected, pattern="^agtype:")],
+                AG_TYPE_SELECT: [
+                    CallbackQueryHandler(self.ag_type_selected, pattern="^agtype:"),
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, self.settings_menu),
+                ],
                 AG_GROUPS: [
                     CallbackQueryHandler(self.ag_select_group, pattern="^aggroup:"),
                     CallbackQueryHandler(self.ag_add_group_prompt, pattern="^agaddgroup$"),
-                    CallbackQueryHandler(self.ag_type_back, pattern="^agtypeback$")
+                    CallbackQueryHandler(self.ag_type_back, pattern="^agtypeback$"),
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, self.settings_menu),
                 ],
                 AG_ADD_GROUP_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.ag_add_group_name)],
                 AG_ACCOUNTS: [
@@ -100,14 +105,16 @@ class FinanceBot(
                     CallbackQueryHandler(self.acc_add_prompt, pattern="^addacc$"),
                     CallbackQueryHandler(self.grename_prompt, pattern="^grename$"),
                     CallbackQueryHandler(self.gdelete, pattern="^gdelete$"),
-                    CallbackQueryHandler(self.groups_back, pattern="^groupsback$")
+                    CallbackQueryHandler(self.groups_back, pattern="^groupsback$"),
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, self.settings_menu),
                 ],
                 AG_GROUP_RENAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.grename)],
                 AG_ADD_ACCOUNT_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.acc_add_name)],
                 ACCOUNT_MENU: [
                     CallbackQueryHandler(self.account_rename_prompt, pattern="^renacc$"),
                     CallbackQueryHandler(self.account_delete, pattern="^delacc$"),
-                    CallbackQueryHandler(self.account_menu_back, pattern="^accback$")
+                    CallbackQueryHandler(self.account_menu_back, pattern="^accback$"),
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, self.settings_menu),
                 ],
                 ACCOUNT_RENAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.account_rename)],
             },
