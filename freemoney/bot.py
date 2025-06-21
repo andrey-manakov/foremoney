@@ -663,7 +663,6 @@ class FinanceBot:
                 SUMMARY: [CallbackQueryHandler(self.summary_action, pattern="^(edit|delete)$")],
             },
             fallbacks=[CommandHandler("cancel", self.cancel)],
-            per_message=True,
             allow_reentry=True,
         )
         application.add_handler(create_tx_conv)
@@ -676,7 +675,6 @@ class FinanceBot:
                 TX_EDIT_AMOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.tx_edit_amount)],
             },
             fallbacks=[CommandHandler("cancel", self.cancel)],
-            per_message=True,
         )
         application.add_handler(tx_conv)
 
@@ -717,7 +715,6 @@ class FinanceBot:
                 ACCOUNT_RENAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.account_rename)],
             },
             fallbacks=[CommandHandler("cancel", self.cancel)],
-            per_message=True,
         )
         application.add_handler(settings_conv)
 
