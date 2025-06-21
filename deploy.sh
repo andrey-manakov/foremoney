@@ -14,16 +14,16 @@ fi
 "$PYTHON" -m pip install --upgrade pip
 "$PYTHON" -m pip install -r "$APP_DIR/requirements.txt"
 
-SERVICE_FILE="/etc/systemd/system/freemoney.service"
+SERVICE_FILE="/etc/systemd/system/foremoney.service"
 
 echo "[Unit]" | sudo tee "$SERVICE_FILE" > /dev/null
 sudo tee -a "$SERVICE_FILE" > /dev/null <<EOF2
-Description=FreeMoney Telegram Bot
+Description=ForeMoney Telegram Bot
 After=network.target
 
 [Service]
 WorkingDirectory=$APP_DIR
-ExecStart=$PYTHON $APP_DIR/bot-start-freemoney.py
+ExecStart=$PYTHON $APP_DIR/bot-start-foremoney.py
 Restart=always
 EnvironmentFile=$APP_DIR/.env
 
@@ -32,5 +32,5 @@ WantedBy=multi-user.target
 EOF2
 
 sudo systemctl daemon-reload
-sudo systemctl enable freemoney.service
-sudo systemctl restart freemoney.service
+sudo systemctl enable foremoney.service
+sudo systemctl restart foremoney.service
