@@ -1,5 +1,5 @@
 from .database import Database
-from .constants import ACCOUNT_TYPES, ACCOUNT_GROUPS
+from .constants import ACCOUNT_TYPES, ACCOUNT_GROUPS, CAPITAL_ACCOUNTS
 
 
 def seed(db: Database, user_id: int) -> None:
@@ -30,3 +30,22 @@ def seed(db: Database, user_id: int) -> None:
                     """,
                     (user_id, type_id, group),
                 )
+        if atype == "capital":
+            for group in groups:
+                group_row = db.fetchone(
+                    "SELECT id FROM account_groups WHERE user_id=? AND type_id=? AND name=?",
+                    (user_id, type_id, group),
+                )
+                if not group_row:
+                    continue
+                gid = group_row["id"]
+                for acc in CAPITAL_ACCOUNTS.get(group, []):
+                    acc_exists = db.fetchone(
+                        "SELECT 1 FROM accounts WHERE user_id=? AND group_id=? AND name=?",
+                        (user_id, gid, acc),
+                    )
+                    if not acc_exists:
+                        db.execute(
+                            "INSERT INTO accounts (user_id, group_id, name) VALUES (?, ?, ?)",
+                            (user_id, gid, acc),
+                        )
