@@ -78,13 +78,11 @@ class FinanceBot:
         return application
 
 
-async def main() -> None:
+def main() -> None:
     bot = FinanceBot()
     application = bot.build_app()
-    await application.run_polling()
+    application.run_polling()
 
 
 if __name__ == "__main__":
-    import asyncio
-
-    asyncio.run(main())
+    main()
