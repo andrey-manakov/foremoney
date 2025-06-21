@@ -1,6 +1,8 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 
+from .init_data import seed
+
 from .ui import items_keyboard
 from .states import (
     AG_TYPE_SELECT, AG_GROUPS, AG_GROUP_RENAME, AG_ADD_GROUP_NAME,
@@ -21,7 +23,9 @@ class SettingsGroupsMixin:
         return InlineKeyboardMarkup(buttons)
 
     async def start_account_groups(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-        types = self.db.account_types_with_value(update.effective_user.id)
+        user_id = update.effective_user.id
+        seed(self.db, user_id)
+        types = self.db.account_types_with_value(user_id)
         type_labels = [
             {"id": t["id"], "name": f"{t['name']} ({t['value']})"} for t in types
         ]

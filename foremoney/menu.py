@@ -96,6 +96,7 @@ class MenuMixin:
             )
             return DASH_MENU
         if text == "Accounts":
+            seed(self.db, user_id)
             types = self.db.account_types_with_value(user_id)
             type_labels = [
                 {"id": t["id"], "name": f"{t['name']} ({t['value']})"} for t in types

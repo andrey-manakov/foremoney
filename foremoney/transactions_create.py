@@ -9,6 +9,7 @@ from telegram import (
 from telegram.ext import ContextTypes, ConversationHandler
 
 from .ui import items_reply_keyboard
+from .init_data import seed
 from .states import (
     FROM_TYPE,
     FROM_GROUP,
@@ -26,6 +27,7 @@ class TransactionCreateMixin:
 
     async def start_create_transaction(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         user_id = update.effective_user.id
+        seed(self.db, user_id)
         types = self.db.account_types_with_value(user_id)
         type_labels = [
             {"id": t["id"], "name": f"{t['name']} ({t['value']})"} for t in types
