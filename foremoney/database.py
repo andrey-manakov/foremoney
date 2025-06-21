@@ -235,6 +235,32 @@ class Database:
         )["s"]
         return inc - out
 
+    def account_value(self, user_id: int, account_id: int) -> float:
+        """Return account value based on its type."""
+        bal = self.account_balance(user_id, account_id)
+        row = self.fetchone(
+            """
+            SELECT t.name AS type_name
+            FROM accounts a
+            JOIN account_groups g ON a.group_id=g.id
+            JOIN account_types t ON g.type_id=t.id
+            WHERE a.user_id=? AND a.id=?
+            """,
+            (user_id, account_id),
+        )
+        if row and row["type_name"] in ("liabilities", "income", "capital"):
+            return -bal
+        return bal
+
+    def accounts_with_value(self, user_id: int, group_id: int):
+        """Return accounts list with calculated values."""
+        accs = self.accounts(user_id, group_id)
+        result = []
+        for a in accs:
+            val = self.account_value(user_id, a["id"])
+            result.append({"id": a["id"], "name": a["name"], "value": val})
+        return result
+
     def accounts_balance(self, user_id: int, account_ids: Iterable[int]) -> float:
         total = 0.0
         for aid in account_ids:

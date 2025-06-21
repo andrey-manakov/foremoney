@@ -68,12 +68,15 @@ class TransactionCreateMixin:
             return FROM_GROUP
         group_id = group_map[text]
         context.user_data["from_group"] = group_id
-        accounts = self.db.accounts(update.effective_user.id, group_id)
-        context.user_data["from_account_map"] = {a["name"]: a["id"] for a in accounts}
+        accounts = self.db.accounts_with_value(update.effective_user.id, group_id)
+        acc_labels = [
+            {"id": a["id"], "name": f"{a['name']} ({a['value']})"} for a in accounts
+        ]
+        context.user_data["from_account_map"] = {lbl["name"]: lbl["id"] for lbl in acc_labels}
         context.user_data["account_prefix"] = "from"
         await update.message.reply_text(
             "Select source account",
-            reply_markup=items_reply_keyboard(accounts, ["+ account", "Back", "Cancel"], columns=2),
+            reply_markup=items_reply_keyboard(acc_labels, ["+ account", "Back", "Cancel"], columns=2),
         )
         return FROM_ACCOUNT
 
@@ -89,24 +92,26 @@ class TransactionCreateMixin:
             )
             return ConversationHandler.END
         if text == "Back":
-            accounts = self.db.accounts(user_id, gid)
+            accounts = self.db.accounts_with_value(user_id, gid)
+            acc_labels = [{"id": a["id"], "name": f"{a['name']} ({a['value']})"} for a in accounts]
             acc_map_key = "from_account_map" if prefix == "from" else "to_account_map"
-            context.user_data[acc_map_key] = {a["name"]: a["id"] for a in accounts}
+            context.user_data[acc_map_key] = {lbl["name"]: lbl["id"] for lbl in acc_labels}
             context.user_data["account_prefix"] = prefix
             await update.message.reply_text(
                 "Select account",
-                reply_markup=items_reply_keyboard(accounts, ["+ account", "Back", "Cancel"], columns=2),
+                reply_markup=items_reply_keyboard(acc_labels, ["+ account", "Back", "Cancel"], columns=2),
             )
             return FROM_ACCOUNT if prefix == "from" else TO_ACCOUNT
         name = text
         self.db.add_account(user_id, gid, name)
-        accounts = self.db.accounts(user_id, gid)
+        accounts = self.db.accounts_with_value(user_id, gid)
+        acc_labels = [{"id": a["id"], "name": f"{a['name']} ({a['value']})"} for a in accounts]
         acc_map_key = "from_account_map" if prefix == "from" else "to_account_map"
-        context.user_data[acc_map_key] = {a["name"]: a["id"] for a in accounts}
+        context.user_data[acc_map_key] = {lbl["name"]: lbl["id"] for lbl in acc_labels}
         context.user_data["account_prefix"] = prefix
         await update.message.reply_text(
             "Select account",
-            reply_markup=items_reply_keyboard(accounts, ["+ account", "Back", "Cancel"], columns=2),
+            reply_markup=items_reply_keyboard(acc_labels, ["+ account", "Back", "Cancel"], columns=2),
         )
         return FROM_ACCOUNT if prefix == "from" else TO_ACCOUNT
 
@@ -154,14 +159,15 @@ class TransactionCreateMixin:
             )
             return ConversationHandler.END
         if text == "Back":
-            accounts = self.db.accounts(
+            accounts = self.db.accounts_with_value(
                 update.effective_user.id, context.user_data["from_group"]
             )
-            context.user_data["from_account_map"] = {a["name"]: a["id"] for a in accounts}
+            acc_labels = [{"id": a["id"], "name": f"{a['name']} ({a['value']})"} for a in accounts]
+            context.user_data["from_account_map"] = {lbl["name"]: lbl["id"] for lbl in acc_labels}
             context.user_data["account_prefix"] = "from"
             await update.message.reply_text(
                 "Select source account",
-                reply_markup=items_reply_keyboard(accounts, ["+ account", "Back", "Cancel"], columns=2),
+                reply_markup=items_reply_keyboard(acc_labels, ["+ account", "Back", "Cancel"], columns=2),
             )
             return FROM_ACCOUNT
         type_map = context.user_data.get("to_type_map", {})
@@ -199,12 +205,13 @@ class TransactionCreateMixin:
             return TO_GROUP
         group_id = group_map[text]
         context.user_data["to_group"] = group_id
-        accounts = self.db.accounts(update.effective_user.id, group_id)
-        context.user_data["to_account_map"] = {a["name"]: a["id"] for a in accounts}
+        accounts = self.db.accounts_with_value(update.effective_user.id, group_id)
+        acc_labels = [{"id": a["id"], "name": f"{a['name']} ({a['value']})"} for a in accounts]
+        context.user_data["to_account_map"] = {lbl["name"]: lbl["id"] for lbl in acc_labels}
         context.user_data["account_prefix"] = "to"
         await update.message.reply_text(
             "Select destination account",
-            reply_markup=items_reply_keyboard(accounts, ["+ account", "Back", "Cancel"], columns=2),
+            reply_markup=items_reply_keyboard(acc_labels, ["+ account", "Back", "Cancel"], columns=2),
         )
         return TO_ACCOUNT
 
@@ -254,14 +261,15 @@ class TransactionCreateMixin:
             )
             return ConversationHandler.END
         if text == "Back":
-            accounts = self.db.accounts(
+            accounts = self.db.accounts_with_value(
                 update.effective_user.id, context.user_data["to_group"]
             )
-            context.user_data["to_account_map"] = {a["name"]: a["id"] for a in accounts}
+            acc_labels = [{"id": a["id"], "name": f"{a['name']} ({a['value']})"} for a in accounts]
+            context.user_data["to_account_map"] = {lbl["name"]: lbl["id"] for lbl in acc_labels}
             context.user_data["account_prefix"] = "to"
             await update.message.reply_text(
                 "Select destination account",
-                reply_markup=items_reply_keyboard(accounts, ["+ account", "Back", "Cancel"], columns=2),
+                reply_markup=items_reply_keyboard(acc_labels, ["+ account", "Back", "Cancel"], columns=2),
             )
             return TO_ACCOUNT
         try:
