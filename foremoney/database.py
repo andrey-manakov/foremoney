@@ -261,6 +261,38 @@ class Database:
             result.append({"id": a["id"], "name": a["name"], "value": val})
         return result
 
+    def account_group_value(self, user_id: int, group_id: int) -> float:
+        """Return total value of all accounts within a group."""
+        total = 0.0
+        for acc in self.accounts(user_id, group_id):
+            total += self.account_value(user_id, acc["id"])
+        return total
+
+    def account_groups_with_value(self, user_id: int, type_id: int):
+        """Return account groups list with calculated values."""
+        groups = self.account_groups(user_id, type_id)
+        result = []
+        for g in groups:
+            val = self.account_group_value(user_id, g["id"])
+            result.append({"id": g["id"], "name": g["name"], "value": val})
+        return result
+
+    def account_type_value(self, user_id: int, type_id: int) -> float:
+        """Return total value of all accounts within a type."""
+        total = 0.0
+        for g in self.account_groups(user_id, type_id):
+            total += self.account_group_value(user_id, g["id"])
+        return total
+
+    def account_types_with_value(self, user_id: int):
+        """Return account types list with calculated values."""
+        types = self.account_types()
+        result = []
+        for t in types:
+            val = self.account_type_value(user_id, t["id"])
+            result.append({"id": t["id"], "name": t["name"], "value": val})
+        return result
+
     def accounts_balance(self, user_id: int, account_ids: Iterable[int]) -> float:
         total = 0.0
         for aid in account_ids:
