@@ -11,9 +11,9 @@ class SettingsGroupsMixin:
     """Manage account group operations."""
 
     def account_groups_keyboard(self, user_id: int, type_id: int) -> InlineKeyboardMarkup:
-        groups = self.db.account_groups(user_id, type_id)
+        groups = self.db.account_groups_with_value(user_id, type_id)
         buttons = [
-            [InlineKeyboardButton(g["name"], callback_data=f"aggroup:{g['id']}")]
+            [InlineKeyboardButton(f"{g['name']} ({g['value']})", callback_data=f"aggroup:{g['id']}")]
             for g in groups
         ]
         buttons.append([InlineKeyboardButton("+ group", callback_data="agaddgroup")])
@@ -21,9 +21,12 @@ class SettingsGroupsMixin:
         return InlineKeyboardMarkup(buttons)
 
     async def start_account_groups(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-        types = self.db.account_types()
+        types = self.db.account_types_with_value(update.effective_user.id)
+        type_labels = [
+            {"id": t["id"], "name": f"{t['name']} ({t['value']})"} for t in types
+        ]
         await update.message.reply_text(
-            "Select account type", reply_markup=items_keyboard(types, "agtype")
+            "Select account type", reply_markup=items_keyboard(type_labels, "agtype")
         )
         return AG_TYPE_SELECT
 
@@ -69,10 +72,13 @@ class SettingsGroupsMixin:
     async def ag_type_back(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         query = update.callback_query
         await query.answer()
-        types = self.db.account_types()
+        types = self.db.account_types_with_value(update.effective_user.id)
+        type_labels = [
+            {"id": t["id"], "name": f"{t['name']} ({t['value']})"} for t in types
+        ]
         await query.message.reply_text(
             "Select account type",
-            reply_markup=items_keyboard(types, "agtype"),
+            reply_markup=items_keyboard(type_labels, "agtype"),
         )
         return AG_TYPE_SELECT
 

@@ -24,11 +24,15 @@ class TransactionCreateMixin:
     """Flow for creating a transaction."""
 
     async def start_create_transaction(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-        types = self.db.account_types()
-        context.user_data["from_type_map"] = {t["name"]: t["id"] for t in types}
+        user_id = update.effective_user.id
+        types = self.db.account_types_with_value(user_id)
+        type_labels = [
+            {"id": t["id"], "name": f"{t['name']} ({t['value']})"} for t in types
+        ]
+        context.user_data["from_type_map"] = {lbl["name"]: lbl["id"] for lbl in type_labels}
         await update.message.reply_text(
             "Select source account type",
-            reply_markup=items_reply_keyboard(types, ["Cancel"], columns=2),
+            reply_markup=items_reply_keyboard(type_labels, ["Cancel"], columns=2),
         )
         return FROM_TYPE
 
@@ -45,11 +49,15 @@ class TransactionCreateMixin:
             return FROM_TYPE
         type_id = type_map[text]
         context.user_data["from_type"] = type_id
-        groups = self.db.account_groups(update.effective_user.id, type_id)
-        context.user_data["from_group_map"] = {g["name"]: g["id"] for g in groups}
+        user_id = update.effective_user.id
+        groups = self.db.account_groups_with_value(user_id, type_id)
+        group_labels = [
+            {"id": g["id"], "name": f"{g['name']} ({g['value']})"} for g in groups
+        ]
+        context.user_data["from_group_map"] = {lbl["name"]: lbl["id"] for lbl in group_labels}
         await update.message.reply_text(
             "Select source account group",
-            reply_markup=items_reply_keyboard(groups, ["Back", "Cancel"], columns=2),
+            reply_markup=items_reply_keyboard(group_labels, ["Back", "Cancel"], columns=2),
         )
         return FROM_GROUP
 
@@ -123,13 +131,17 @@ class TransactionCreateMixin:
             )
             return ConversationHandler.END
         if text == "Back":
-            groups = self.db.account_groups(
-                update.effective_user.id, context.user_data["from_type"]
+            user_id = update.effective_user.id
+            groups = self.db.account_groups_with_value(
+                user_id, context.user_data["from_type"]
             )
-            context.user_data["from_group_map"] = {g["name"]: g["id"] for g in groups}
+            group_labels = [
+                {"id": g["id"], "name": f"{g['name']} ({g['value']})"} for g in groups
+            ]
+            context.user_data["from_group_map"] = {lbl["name"]: lbl["id"] for lbl in group_labels}
             await update.message.reply_text(
                 "Select source account group",
-                reply_markup=items_reply_keyboard(groups, ["Back", "Cancel"], columns=2),
+                reply_markup=items_reply_keyboard(group_labels, ["Back", "Cancel"], columns=2),
             )
             return FROM_GROUP
         if text == "+ account":
@@ -143,11 +155,15 @@ class TransactionCreateMixin:
             return FROM_ACCOUNT
         account_id = acc_map[text]
         context.user_data["from_account"] = account_id
-        types = self.db.account_types()
-        context.user_data["to_type_map"] = {t["name"]: t["id"] for t in types}
+        user_id = update.effective_user.id
+        types = self.db.account_types_with_value(user_id)
+        type_labels = [
+            {"id": t["id"], "name": f"{t['name']} ({t['value']})"} for t in types
+        ]
+        context.user_data["to_type_map"] = {lbl["name"]: lbl["id"] for lbl in type_labels}
         await update.message.reply_text(
             "Select destination account type",
-            reply_markup=items_reply_keyboard(types, ["Back", "Cancel"], columns=2),
+            reply_markup=items_reply_keyboard(type_labels, ["Back", "Cancel"], columns=2),
         )
         return TO_TYPE
 
@@ -176,11 +192,15 @@ class TransactionCreateMixin:
             return TO_TYPE
         type_id = type_map[text]
         context.user_data["to_type"] = type_id
-        groups = self.db.account_groups(update.effective_user.id, type_id)
-        context.user_data["to_group_map"] = {g["name"]: g["id"] for g in groups}
+        user_id = update.effective_user.id
+        groups = self.db.account_groups_with_value(user_id, type_id)
+        group_labels = [
+            {"id": g["id"], "name": f"{g['name']} ({g['value']})"} for g in groups
+        ]
+        context.user_data["to_group_map"] = {lbl["name"]: lbl["id"] for lbl in group_labels}
         await update.message.reply_text(
             "Select destination account group",
-            reply_markup=items_reply_keyboard(groups, ["Back", "Cancel"], columns=2),
+            reply_markup=items_reply_keyboard(group_labels, ["Back", "Cancel"], columns=2),
         )
         return TO_GROUP
 
@@ -192,11 +212,15 @@ class TransactionCreateMixin:
             )
             return ConversationHandler.END
         if text == "Back":
-            types = self.db.account_types()
-            context.user_data["to_type_map"] = {t["name"]: t["id"] for t in types}
+            user_id = update.effective_user.id
+            types = self.db.account_types_with_value(user_id)
+            type_labels = [
+                {"id": t["id"], "name": f"{t['name']} ({t['value']})"} for t in types
+            ]
+            context.user_data["to_type_map"] = {lbl["name"]: lbl["id"] for lbl in type_labels}
             await update.message.reply_text(
                 "Select destination account type",
-                reply_markup=items_reply_keyboard(types, ["Back", "Cancel"], columns=2),
+                reply_markup=items_reply_keyboard(type_labels, ["Back", "Cancel"], columns=2),
             )
             return TO_TYPE
         group_map = context.user_data.get("to_group_map", {})
@@ -223,13 +247,17 @@ class TransactionCreateMixin:
             )
             return ConversationHandler.END
         if text == "Back":
-            groups = self.db.account_groups(
-                update.effective_user.id, context.user_data["to_type"]
+            user_id = update.effective_user.id
+            groups = self.db.account_groups_with_value(
+                user_id, context.user_data["to_type"]
             )
-            context.user_data["to_group_map"] = {g["name"]: g["id"] for g in groups}
+            group_labels = [
+                {"id": g["id"], "name": f"{g['name']} ({g['value']})"} for g in groups
+            ]
+            context.user_data["to_group_map"] = {lbl["name"]: lbl["id"] for lbl in group_labels}
             await update.message.reply_text(
                 "Select destination account group",
-                reply_markup=items_reply_keyboard(groups, ["Back", "Cancel"], columns=2),
+                reply_markup=items_reply_keyboard(group_labels, ["Back", "Cancel"], columns=2),
             )
             return TO_GROUP
         if text == "+ account":
