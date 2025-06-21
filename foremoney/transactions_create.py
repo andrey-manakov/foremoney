@@ -17,6 +17,7 @@ from .states import (
     TO_GROUP,
     TO_ACCOUNT,
     AMOUNT,
+    TX_DATETIME,
     ADD_ACCOUNT_NAME,
 )
 
@@ -309,14 +310,60 @@ class TransactionCreateMixin:
         if context.user_data.get("editing"):
             tx_id = context.user_data["tx_id"]
             self.db.update_transaction_amount(user_id, tx_id, amount)
-        else:
-            tx_id = self.db.add_transaction(
-                user_id,
-                context.user_data["from_account"],
-                context.user_data["to_account"],
-                amount,
+            tx = self.db.transaction(user_id, tx_id)
+            await update.message.reply_text(
+                f"{tx['from_name']} - {tx['amount']} -> {tx['to_name']}"
             )
-            context.user_data["tx_id"] = tx_id
+            await update.message.reply_text(
+                "Transaction saved", reply_markup=self.main_menu_keyboard()
+            )
+            return ConversationHandler.END
+        context.user_data["amount"] = amount
+        await update.message.reply_text(
+            "Enter date and time (YYYY-MM-DD HH:MM) or 'Now'",
+            reply_markup=ReplyKeyboardMarkup(
+                [[KeyboardButton("Now"), KeyboardButton("Back"), KeyboardButton("Cancel")]],
+                resize_keyboard=True,
+            ),
+        )
+        return TX_DATETIME
+
+    async def tx_datetime(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        text = update.message.text.strip()
+        if text == "Cancel":
+            await update.message.reply_text(
+                "Cancelled", reply_markup=self.main_menu_keyboard()
+            )
+            return ConversationHandler.END
+        if text == "Back":
+            await update.message.reply_text(
+                "Enter amount",
+                reply_markup=ReplyKeyboardMarkup(
+                    [[KeyboardButton("Back"), KeyboardButton("Cancel")]],
+                    resize_keyboard=True,
+                ),
+            )
+            return AMOUNT
+        if text.lower() == "now":
+            ts = None
+        else:
+            try:
+                from datetime import datetime
+                dt = datetime.strptime(text, "%Y-%m-%d %H:%M")
+                ts = dt.isoformat(sep=" ")
+            except ValueError:
+                await update.message.reply_text(
+                    "Please use format YYYY-MM-DD HH:MM or 'Now'"
+                )
+                return TX_DATETIME
+        user_id = update.effective_user.id
+        tx_id = self.db.add_transaction(
+            user_id,
+            context.user_data["from_account"],
+            context.user_data["to_account"],
+            context.user_data["amount"],
+            ts,
+        )
         tx = self.db.transaction(user_id, tx_id)
         await update.message.reply_text(
             f"{tx['from_name']} - {tx['amount']} -> {tx['to_name']}"
