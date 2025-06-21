@@ -362,3 +362,23 @@ class Database:
             """,
             (user_id, type_id, type_id),
         )
+
+    def account_group_transactions(self, user_id: int, group_id: int):
+        """Return transactions affecting given account group ordered by time."""
+        return self.fetchall(
+            """
+            SELECT t.ts, t.amount,
+                   ftype.name AS from_type, ttype.name AS to_type,
+                   fg.id AS from_group_id, tg.id AS to_group_id
+            FROM transactions t
+            JOIN accounts fa ON fa.id=t.from_account
+            JOIN account_groups fg ON fa.group_id=fg.id
+            JOIN account_types ftype ON fg.type_id=ftype.id
+            JOIN accounts ta ON ta.id=t.to_account
+            JOIN account_groups tg ON ta.group_id=tg.id
+            JOIN account_types ttype ON tg.type_id=ttype.id
+            WHERE t.user_id=? AND (fg.id=? OR tg.id=?)
+            ORDER BY t.ts, t.id
+            """,
+            (user_id, group_id, group_id),
+        )

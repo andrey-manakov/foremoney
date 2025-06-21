@@ -7,6 +7,8 @@ from .states import (
     DASH_MENU,
     DASH_ACC_TYPE,
     DASH_ACC_MENU,
+    DASH_GROUP_SELECT,
+    DASH_GROUP_MENU,
 )
 from .ui import items_reply_keyboard
 from datetime import datetime
@@ -65,6 +67,15 @@ class MenuMixin:
     def dashboard_account_menu_keyboard(self) -> ReplyKeyboardMarkup:
         buttons = [
             [KeyboardButton("Account groups")],
+            [KeyboardButton("Structure")],
+            [KeyboardButton("Dynamics")],
+            [KeyboardButton("Back"), KeyboardButton("Cancel")],
+        ]
+        return ReplyKeyboardMarkup(buttons, resize_keyboard=True)
+
+    def dashboard_group_menu_keyboard(self) -> ReplyKeyboardMarkup:
+        buttons = [
+            [KeyboardButton("Accounts")],
             [KeyboardButton("Structure")],
             [KeyboardButton("Dynamics")],
             [KeyboardButton("Back"), KeyboardButton("Cancel")],
@@ -169,10 +180,7 @@ class MenuMixin:
             )
             return DASH_ACC_TYPE
         if text == "Account groups":
-            await update.message.reply_text(
-                "Feature not implemented yet.", reply_markup=self.dashboard_account_menu_keyboard()
-            )
-            return DASH_ACC_MENU
+            return await self.dashboard_group_list(update, context)
         if text == "Structure":
             groups = self.db.account_groups_with_value(user_id, type_id)
             if not groups:
@@ -229,3 +237,120 @@ class MenuMixin:
             "Use menu", reply_markup=self.dashboard_account_menu_keyboard()
         )
         return DASH_ACC_MENU
+
+    async def dashboard_group_list(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        user_id = update.effective_user.id
+        type_id = context.user_data.get("dash_type")
+        groups = self.db.account_groups_with_value(user_id, type_id)
+        group_labels = [
+            {"id": g["id"], "name": f"{g['name']} ({g['value']})"} for g in groups
+        ]
+        context.user_data["dash_group_map"] = {lbl["name"]: lbl["id"] for lbl in group_labels}
+        await update.message.reply_text(
+            "Select account group",
+            reply_markup=items_reply_keyboard(group_labels, ["Back", "Cancel"], columns=2),
+        )
+        return DASH_GROUP_SELECT
+
+    async def dashboard_group_select(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        text = update.message.text
+        if text == "Cancel":
+            await update.message.reply_text(
+                "Cancelled", reply_markup=self.main_menu_keyboard()
+            )
+            return ConversationHandler.END
+        if text == "Back":
+            await update.message.reply_text(
+                "Account view:", reply_markup=self.dashboard_account_menu_keyboard()
+            )
+            return DASH_ACC_MENU
+        group_map = context.user_data.get("dash_group_map", {})
+        if text not in group_map:
+            await update.message.reply_text("Use provided buttons")
+            return DASH_GROUP_SELECT
+        gid = group_map[text]
+        context.user_data["dash_group"] = gid
+        await update.message.reply_text(
+            "Group view:", reply_markup=self.dashboard_group_menu_keyboard()
+        )
+        return DASH_GROUP_MENU
+
+    async def dashboard_group_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        text = update.message.text
+        user_id = update.effective_user.id
+        gid = context.user_data.get("dash_group")
+        if text == "Cancel":
+            await update.message.reply_text(
+                "Cancelled", reply_markup=self.main_menu_keyboard()
+            )
+            return ConversationHandler.END
+        if text == "Back":
+            return await self.dashboard_group_list(update, context)
+        if text == "Accounts":
+            accounts = self.db.accounts_with_value(user_id, gid)
+            if not accounts:
+                await update.message.reply_text(
+                    "No accounts to display", reply_markup=self.dashboard_group_menu_keyboard()
+                )
+                return DASH_GROUP_MENU
+            lines = [f"{a['name']}: {a['value']}" for a in accounts]
+            await update.message.reply_text(
+                "\n".join(lines), reply_markup=self.dashboard_group_menu_keyboard()
+            )
+            return DASH_GROUP_MENU
+        if text == "Structure":
+            accounts = self.db.accounts_with_value(user_id, gid)
+            if not accounts:
+                await update.message.reply_text(
+                    "No data to display", reply_markup=self.dashboard_group_menu_keyboard()
+                )
+                return DASH_GROUP_MENU
+            names = [a["name"] for a in accounts]
+            values = [a["value"] for a in accounts]
+            if sum(values) == 0:
+                await update.message.reply_text(
+                    "No data to display", reply_markup=self.dashboard_group_menu_keyboard()
+                )
+                return DASH_GROUP_MENU
+            plt.figure()
+            plt.pie(values, labels=names, autopct="%1.1f%%")
+            buf = BytesIO()
+            plt.savefig(buf, format="png")
+            plt.close()
+            buf.seek(0)
+            await update.message.reply_photo(photo=buf, reply_markup=self.dashboard_group_menu_keyboard())
+            return DASH_GROUP_MENU
+        if text == "Dynamics":
+            rows = self.db.account_group_transactions(user_id, gid)
+            if not rows:
+                await update.message.reply_text(
+                    "No data to display", reply_markup=self.dashboard_group_menu_keyboard()
+                )
+                return DASH_GROUP_MENU
+            neg_types = {"liabilities", "income", "capital"}
+            times = []
+            values = []
+            val = 0.0
+            for r in rows:
+                delta = 0.0
+                if r["from_group_id"] == gid:
+                    delta += r["amount"] if r["from_type"] in neg_types else -r["amount"]
+                if r["to_group_id"] == gid:
+                    delta += -r["amount"] if r["to_type"] in neg_types else r["amount"]
+                val += delta
+                times.append(datetime.fromisoformat(r["ts"]))
+                values.append(val)
+            plt.figure()
+            plt.plot(times, values)
+            plt.xticks(rotation=45)
+            plt.tight_layout()
+            buf = BytesIO()
+            plt.savefig(buf, format="png")
+            plt.close()
+            buf.seek(0)
+            await update.message.reply_photo(photo=buf, reply_markup=self.dashboard_group_menu_keyboard())
+            return DASH_GROUP_MENU
+        await update.message.reply_text(
+            "Use menu", reply_markup=self.dashboard_group_menu_keyboard()
+        )
+        return DASH_GROUP_MENU

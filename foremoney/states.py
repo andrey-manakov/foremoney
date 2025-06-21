@@ -26,4 +26,6 @@
     DASH_MENU,
     DASH_ACC_TYPE,
     DASH_ACC_MENU,
-) = range(26)
+    DASH_GROUP_SELECT,
+    DASH_GROUP_MENU,
+) = range(28)

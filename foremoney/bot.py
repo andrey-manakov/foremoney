@@ -70,6 +70,8 @@ class FinanceBot(
                 DASH_MENU: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.dashboard_menu)],
                 DASH_ACC_TYPE: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.dashboard_acc_type)],
                 DASH_ACC_MENU: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.dashboard_acc_menu)],
+                DASH_GROUP_SELECT: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.dashboard_group_select)],
+                DASH_GROUP_MENU: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.dashboard_group_menu)],
             },
             fallbacks=[CommandHandler("cancel", self.cancel)],
         )
