@@ -59,6 +59,7 @@ class FinanceBot(
                 TX_EDIT_AMOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.tx_edit_amount)],
             },
             fallbacks=[CommandHandler("cancel", self.cancel)],
+            allow_reentry=True,
         )
         application.add_handler(tx_conv)
 
