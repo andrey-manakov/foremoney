@@ -37,24 +37,12 @@ class FinanceBot(
         create_tx_conv = ConversationHandler(
             entry_points=[MessageHandler(filters.Regex("^Create transaction$"), self.start_create_transaction)],
             states={
-                FROM_TYPE: [CallbackQueryHandler(self.from_type, pattern="^ftype:")],
-                FROM_GROUP: [
-                    CallbackQueryHandler(self.from_group, pattern="^fgroup:"),
-                    CallbackQueryHandler(self.add_account_prompt, pattern="^addacc:from:"),
-                ],
-                FROM_ACCOUNT: [
-                    CallbackQueryHandler(self.from_account, pattern="^facc:"),
-                    CallbackQueryHandler(self.add_account_prompt, pattern="^addacc:from:"),
-                ],
-                TO_TYPE: [CallbackQueryHandler(self.to_type, pattern="^ttype:")],
-                TO_GROUP: [
-                    CallbackQueryHandler(self.to_group, pattern="^tgroup:"),
-                    CallbackQueryHandler(self.add_account_prompt, pattern="^addacc:to:"),
-                ],
-                TO_ACCOUNT: [
-                    CallbackQueryHandler(self.to_account, pattern="^tacc:"),
-                    CallbackQueryHandler(self.add_account_prompt, pattern="^addacc:to:"),
-                ],
+                FROM_TYPE: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.from_type)],
+                FROM_GROUP: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.from_group)],
+                FROM_ACCOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.from_account)],
+                TO_TYPE: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.to_type)],
+                TO_GROUP: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.to_group)],
+                TO_ACCOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.to_account)],
                 AMOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.amount)],
                 ADD_ACCOUNT_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.add_account_name)],
                 SUMMARY: [CallbackQueryHandler(self.summary_action, pattern="^(edit|delete)$")],
