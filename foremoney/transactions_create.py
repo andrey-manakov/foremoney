@@ -288,3 +288,25 @@ class TransactionCreateMixin:
         )
         return SUMMARY
 
+    async def summary_action(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        """Handle Edit/Delete actions on the transaction summary."""
+        query = update.callback_query
+        await query.answer()
+        user_id = update.effective_user.id
+        tx_id = context.user_data.get("tx_id")
+        if query.data == "delete" and tx_id:
+            self.db.delete_transaction(user_id, tx_id)
+            await query.message.reply_text("Transaction deleted")
+            return ConversationHandler.END
+        if query.data == "edit" and tx_id:
+            context.user_data["editing"] = True
+            await query.message.reply_text(
+                "Enter amount",
+                reply_markup=ReplyKeyboardMarkup(
+                    [[KeyboardButton("Back"), KeyboardButton("Cancel")]],
+                    resize_keyboard=True,
+                ),
+            )
+            return AMOUNT
+        return SUMMARY
+
