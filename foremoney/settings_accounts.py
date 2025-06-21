@@ -1,7 +1,13 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 
-from .states import AG_ADD_ACCOUNT_NAME, ACCOUNT_MENU, ACCOUNT_RENAME, AG_ACCOUNTS
+from .states import (
+    AG_ADD_ACCOUNT_NAME,
+    AG_ADD_ACCOUNT_VALUE,
+    ACCOUNT_MENU,
+    ACCOUNT_RENAME,
+    AG_ACCOUNTS,
+)
 
 class SettingsAccountsMixin:
     """Manage individual accounts."""
@@ -43,7 +49,85 @@ class SettingsAccountsMixin:
         name = update.message.text.strip()
         gid = context.user_data["group_id"]
         user_id = update.effective_user.id
-        self.db.add_account(user_id, gid, name)
+        acc_id = self.db.add_account(user_id, gid, name)
+        context.user_data["new_account_id"] = acc_id
+        await update.message.reply_text("Enter initial value")
+        return AG_ADD_ACCOUNT_VALUE
+
+    async def acc_add_value(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        text = update.message.text.strip()
+        try:
+            value = float(text)
+        except ValueError:
+            await update.message.reply_text("Please enter a number")
+            return AG_ADD_ACCOUNT_VALUE
+        aid = context.user_data.pop("new_account_id")
+        gid = context.user_data["group_id"]
+        user_id = update.effective_user.id
+        if value != 0:
+            row = self.db.fetchone(
+                """
+                SELECT g.name AS group_name, t.name AS type_name
+                FROM account_groups g
+                JOIN account_types t ON g.type_id=t.id
+                WHERE g.id=? AND g.user_id=?
+                """,
+                (gid, user_id),
+            )
+            if row:
+                gname = row["group_name"]
+                tname = row["type_name"]
+                if tname == "assets":
+                    cap = self.db.fetchone(
+                        """
+                        SELECT a.id FROM accounts a
+                        JOIN account_groups g ON a.group_id=g.id
+                        JOIN account_types t ON g.type_id=t.id
+                        WHERE a.user_id=? AND t.name='capital' AND g.name='assets' AND a.name=?
+                        """,
+                        (user_id, gname),
+                    )
+                    if cap:
+                        self.db.add_transaction(user_id, cap["id"], aid, value)
+                elif tname == "liabilities":
+                    cap = self.db.fetchone(
+                        """
+                        SELECT a.id FROM accounts a
+                        JOIN account_groups g ON a.group_id=g.id
+                        JOIN account_types t ON g.type_id=t.id
+                        WHERE a.user_id=? AND t.name='capital' AND g.name='liabilities' AND a.name=?
+                        """,
+                        (user_id, gname),
+                    )
+                    if cap:
+                        self.db.add_transaction(user_id, aid, cap["id"], value)
+                elif tname == "expenditures":
+                    cap = self.db.fetchone(
+                        """
+                        SELECT a.id FROM accounts a
+                        JOIN account_groups g ON a.group_id=g.id
+                        JOIN account_types t ON g.type_id=t.id
+                        WHERE a.user_id=? AND t.name='capital' AND g.name='expenditures' AND a.name=?
+                        """,
+                        (user_id, gname),
+                    )
+                    if cap:
+                        self.db.add_transaction(user_id, cap["id"], aid, value)
+                elif tname == "income":
+                    cap = self.db.fetchone(
+                        """
+                        SELECT a.id FROM accounts a
+                        JOIN account_groups g ON a.group_id=g.id
+                        JOIN account_types t ON g.type_id=t.id
+                        WHERE a.user_id=? AND t.name='capital' AND g.name='income' AND a.name=?
+                        """,
+                        (user_id, gname),
+                    )
+                    if cap:
+                        self.db.add_transaction(user_id, aid, cap["id"], value)
+                elif tname == "capital":
+                    cap_id = self.db.correction_account(user_id)
+                    self.db.add_transaction(user_id, aid, cap_id, value)
         await update.message.reply_text(
             "Account added",
             reply_markup=self.accounts_keyboard(user_id, gid),

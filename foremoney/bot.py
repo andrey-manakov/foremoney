@@ -110,6 +110,7 @@ class FinanceBot(
                 ],
                 AG_GROUP_RENAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.grename)],
                 AG_ADD_ACCOUNT_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.acc_add_name)],
+                AG_ADD_ACCOUNT_VALUE: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.acc_add_value)],
                 ACCOUNT_MENU: [
                     CallbackQueryHandler(self.account_rename_prompt, pattern="^renacc$"),
                     CallbackQueryHandler(self.account_delete, pattern="^delacc$"),
