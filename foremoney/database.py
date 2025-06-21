@@ -109,14 +109,30 @@ class Database:
         )
         return cur.lastrowid
 
-    def add_transaction(self, user_id: int, from_id: int, to_id: int, amount: float) -> int:
-        cur = self.execute(
-            """
-            INSERT INTO transactions (user_id, from_account, to_account, amount)
-            VALUES (?, ?, ?, ?)
-            """,
-            (user_id, from_id, to_id, amount),
-        )
+    def add_transaction(
+        self,
+        user_id: int,
+        from_id: int,
+        to_id: int,
+        amount: float,
+        ts: str | None = None,
+    ) -> int:
+        if ts is not None:
+            cur = self.execute(
+                """
+                INSERT INTO transactions (user_id, from_account, to_account, amount, ts)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (user_id, from_id, to_id, amount, ts),
+            )
+        else:
+            cur = self.execute(
+                """
+                INSERT INTO transactions (user_id, from_account, to_account, amount)
+                VALUES (?, ?, ?, ?)
+                """,
+                (user_id, from_id, to_id, amount),
+            )
         return cur.lastrowid
 
     def transactions(self, user_id: int, limit: int, offset: int) -> Iterable[sqlite3.Row]:
@@ -326,3 +342,23 @@ class Database:
         else:
             gid = group["id"]
         return self.add_account(user_id, gid, "Default")
+
+    def account_type_transactions(self, user_id: int, type_id: int):
+        """Return transactions affecting given account type ordered by time."""
+        return self.fetchall(
+            """
+            SELECT t.ts, t.amount,
+                   ftype.name AS from_type, ttype.name AS to_type,
+                   ftype.id AS from_type_id, ttype.id AS to_type_id
+            FROM transactions t
+            JOIN accounts fa ON fa.id=t.from_account
+            JOIN account_groups fg ON fa.group_id=fg.id
+            JOIN account_types ftype ON fg.type_id=ftype.id
+            JOIN accounts ta ON ta.id=t.to_account
+            JOIN account_groups tg ON ta.group_id=tg.id
+            JOIN account_types ttype ON tg.type_id=ttype.id
+            WHERE t.user_id=? AND (ftype.id=? OR ttype.id=?)
+            ORDER BY t.ts, t.id
+            """,
+            (user_id, type_id, type_id),
+        )

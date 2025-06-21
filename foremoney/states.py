@@ -22,4 +22,8 @@
     AG_ADD_ACCOUNT_NAME,
     ACCOUNT_MENU,
     ACCOUNT_RENAME,
-) = range(22)
+    TX_DATETIME,
+    DASH_MENU,
+    DASH_ACC_TYPE,
+    DASH_ACC_MENU,
+) = range(26)

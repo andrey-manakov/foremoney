@@ -44,6 +44,7 @@ class FinanceBot(
                 TO_GROUP: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.to_group)],
                 TO_ACCOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.to_account)],
                 AMOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.amount)],
+                TX_DATETIME: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.tx_datetime)],
                 ADD_ACCOUNT_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.add_account_name)],
             },
             fallbacks=[CommandHandler("cancel", self.cancel)],
@@ -62,6 +63,17 @@ class FinanceBot(
             allow_reentry=True,
         )
         application.add_handler(tx_conv)
+
+        dashboard_conv = ConversationHandler(
+            entry_points=[MessageHandler(filters.Regex("^Dashboard$"), self.start_dashboard)],
+            states={
+                DASH_MENU: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.dashboard_menu)],
+                DASH_ACC_TYPE: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.dashboard_acc_type)],
+                DASH_ACC_MENU: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.dashboard_acc_menu)],
+            },
+            fallbacks=[CommandHandler("cancel", self.cancel)],
+        )
+        application.add_handler(dashboard_conv)
 
         settings_conv = ConversationHandler(
             entry_points=[
