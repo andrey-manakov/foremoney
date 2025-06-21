@@ -18,10 +18,15 @@ def seed(db: Database, user_id: int) -> None:
             continue
         type_id = type_row["id"]
         for group in groups:
-            db.execute(
-                """
-                INSERT OR IGNORE INTO account_groups (user_id, type_id, name)
-                VALUES (?, ?, ?)
-                """,
+            exists = db.fetchone(
+                "SELECT 1 FROM account_groups WHERE user_id=? AND type_id=? AND name=?",
                 (user_id, type_id, group),
             )
+            if not exists:
+                db.execute(
+                    """
+                    INSERT INTO account_groups (user_id, type_id, name)
+                    VALUES (?, ?, ?)
+                    """,
+                    (user_id, type_id, group),
+                )
