@@ -67,7 +67,7 @@ class MenuMixin:
             [KeyboardButton("Account groups")],
             [KeyboardButton("Structure")],
             [KeyboardButton("Dynamics")],
-            [KeyboardButton("Back")],
+            [KeyboardButton("Back"), KeyboardButton("Cancel")],
         ]
         return ReplyKeyboardMarkup(buttons, resize_keyboard=True)
 
@@ -102,7 +102,9 @@ class MenuMixin:
             context.user_data["dash_type_map"] = {lbl["name"]: lbl["id"] for lbl in type_labels}
             await update.message.reply_text(
                 "Select account type",
-                reply_markup=items_reply_keyboard(type_labels, ["Back"], columns=2),
+                reply_markup=items_reply_keyboard(
+                    type_labels, ["Back", "Cancel"], columns=2
+                ),
             )
             return DASH_ACC_TYPE
         if text == "Forecast":
@@ -123,6 +125,11 @@ class MenuMixin:
 
     async def dashboard_acc_type(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         text = update.message.text
+        if text == "Cancel":
+            await update.message.reply_text(
+                "Cancelled", reply_markup=self.main_menu_keyboard()
+            )
+            return ConversationHandler.END
         if text == "Back":
             await update.message.reply_text(
                 "Dashboard:", reply_markup=self.dashboard_menu_keyboard()
@@ -143,6 +150,11 @@ class MenuMixin:
         text = update.message.text
         user_id = update.effective_user.id
         type_id = context.user_data.get("dash_type")
+        if text == "Cancel":
+            await update.message.reply_text(
+                "Cancelled", reply_markup=self.main_menu_keyboard()
+            )
+            return ConversationHandler.END
         if text == "Back":
             types = self.db.account_types_with_value(user_id)
             type_labels = [
@@ -151,7 +163,9 @@ class MenuMixin:
             context.user_data["dash_type_map"] = {lbl["name"]: lbl["id"] for lbl in type_labels}
             await update.message.reply_text(
                 "Select account type",
-                reply_markup=items_reply_keyboard(type_labels, ["Back"], columns=2),
+                reply_markup=items_reply_keyboard(
+                    type_labels, ["Back", "Cancel"], columns=2
+                ),
             )
             return DASH_ACC_TYPE
         if text == "Account groups":
