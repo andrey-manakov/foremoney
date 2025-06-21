@@ -7,7 +7,6 @@
     TO_GROUP,
     TO_ACCOUNT,
     AMOUNT,
-    SUMMARY,
     ADD_ACCOUNT_NAME,
     TX_LIST,
     TX_DETAILS,
@@ -23,4 +22,4 @@
     AG_ADD_ACCOUNT_NAME,
     ACCOUNT_MENU,
     ACCOUNT_RENAME,
-) = range(23)
+) = range(22)
