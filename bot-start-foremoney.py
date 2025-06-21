@@ -1,4 +1,4 @@
-from freemoney.bot import main
+from foremoney.bot import main
 
 if __name__ == "__main__":
     main()
