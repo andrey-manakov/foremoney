@@ -33,8 +33,20 @@ ACCOUNT_GROUPS = {
         "Salary",
     ],
     "capital": [
-        "Initial values",
-        "Monthly result",
+        "assets",
+        "liabilities",
+        "expenditures",
+        "income",
         "Corrections",
     ],
+}
+
+# Mapping of capital account groups to subordinate account names.
+# Each capital group mirrors the account groups from the respective
+# account type.
+CAPITAL_ACCOUNTS = {
+    "assets": ACCOUNT_GROUPS["assets"],
+    "liabilities": ACCOUNT_GROUPS["liabilities"],
+    "expenditures": ACCOUNT_GROUPS["expenditures"],
+    "income": ACCOUNT_GROUPS["income"],
 }
