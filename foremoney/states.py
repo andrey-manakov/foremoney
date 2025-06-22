@@ -8,6 +8,7 @@
     TO_ACCOUNT,
     AMOUNT,
     ADD_ACCOUNT_NAME,
+    ADD_ACCOUNT_VALUE,
     TX_LIST,
     TX_DETAILS,
     TX_EDIT_AMOUNT,
@@ -29,4 +30,4 @@
     DASH_ACC_MENU,
     DASH_GROUP_SELECT,
     DASH_GROUP_MENU,
-) = range(29)
+) = range(30)
