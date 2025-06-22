@@ -54,6 +54,7 @@ class SettingsDashboardMixin:
             label = f"{prefix}{acc['group_name']}: {acc['name']}"
             buttons.append([InlineKeyboardButton(label, callback_data=f"dashacc:{acc['id']}")])
         buttons.append([InlineKeyboardButton("Save", callback_data="dashsave")])
+        buttons.append([InlineKeyboardButton("Cancel", callback_data="dashcancel")])
         return InlineKeyboardMarkup(buttons)
 
     async def start_dashboard_accounts(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -91,6 +92,19 @@ class SettingsDashboardMixin:
         self.db.set_setting(user_id, "dashboard_accounts", val)
         await query.message.reply_text("Saved", reply_markup=self.settings_menu_keyboard())
         return SETTINGS_MENU
+
+    async def cancel_settings_submenu(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        query = update.callback_query
+        if query:
+            await query.answer()
+            await query.message.reply_text(
+                "Cancelled", reply_markup=self.main_menu_keyboard()
+            )
+        else:
+            await update.message.reply_text(
+                "Cancelled", reply_markup=self.main_menu_keyboard()
+            )
+        return ConversationHandler.END
 
     async def recreate_database(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         user_id = update.effective_user.id

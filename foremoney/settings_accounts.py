@@ -35,11 +35,16 @@ class SettingsAccountsMixin:
         extra: list[str] = []
         if not row or row["type_name"] != "capital":
             extra.append("+ account")
-        extra.extend(["Rename group", "Delete group", "Back"])
+        extra.extend(["Rename group", "Delete group", "Back", "Cancel"])
         return items_reply_keyboard(labels, extra, columns=2)
 
     async def acc_select(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         text = update.message.text
+        if text == "Cancel":
+            await update.message.reply_text(
+                "Cancelled", reply_markup=self.main_menu_keyboard()
+            )
+            return ConversationHandler.END
         acc_map = context.user_data.get("ag_account_map", {})
         if text not in acc_map:
             await update.message.reply_text("Use provided buttons")
@@ -56,6 +61,7 @@ class SettingsAccountsMixin:
                     [KeyboardButton("Rename")],
                     [KeyboardButton("Delete")],
                     [KeyboardButton("Back")],
+                    [KeyboardButton("Cancel")],
                 ],
                 resize_keyboard=True,
             ),
@@ -83,6 +89,11 @@ class SettingsAccountsMixin:
 
     async def acc_add_name(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         name = update.message.text.strip()
+        if name == "Cancel":
+            await update.message.reply_text(
+                "Cancelled", reply_markup=self.main_menu_keyboard()
+            )
+            return ConversationHandler.END
         gid = context.user_data["group_id"]
         user_id = update.effective_user.id
         acc_id = self.db.add_account(user_id, gid, name)
@@ -92,6 +103,11 @@ class SettingsAccountsMixin:
 
     async def acc_add_value(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         text = update.message.text.strip()
+        if text == "Cancel":
+            await update.message.reply_text(
+                "Cancelled", reply_markup=self.main_menu_keyboard()
+            )
+            return ConversationHandler.END
         try:
             value = float(text)
         except ValueError:
@@ -177,6 +193,11 @@ class SettingsAccountsMixin:
 
     async def account_rename(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         name = update.message.text.strip()
+        if name == "Cancel":
+            await update.message.reply_text(
+                "Cancelled", reply_markup=self.main_menu_keyboard()
+            )
+            return ConversationHandler.END
         aid = context.user_data["account_id"]
         user_id = update.effective_user.id
         self.db.update_account_name(user_id, aid, name)
@@ -201,6 +222,11 @@ class SettingsAccountsMixin:
         return AG_ACCOUNTS
 
     async def account_menu_back(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        if update.message.text == "Cancel":
+            await update.message.reply_text(
+                "Cancelled", reply_markup=self.main_menu_keyboard()
+            )
+            return ConversationHandler.END
         gid = context.user_data["group_id"]
         keyboard = self.accounts_keyboard(update.effective_user.id, gid, context.user_data)
         await update.message.reply_text(

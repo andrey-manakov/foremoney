@@ -89,6 +89,7 @@ class FinanceBot(
                 DASHBOARD_ACCOUNTS: [
                     CallbackQueryHandler(self.toggle_dashboard_account, pattern="^dashacc:"),
                     CallbackQueryHandler(self.save_dashboard_accounts, pattern="^dashsave$"),
+                    CallbackQueryHandler(self.cancel_settings_submenu, pattern="^dashcancel$"),
                     MessageHandler(filters.TEXT & ~filters.COMMAND, self.settings_menu),
                 ],
                 AG_TYPE_SELECT: [
