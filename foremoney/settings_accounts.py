@@ -18,7 +18,17 @@ class SettingsAccountsMixin:
             [InlineKeyboardButton(a["name"], callback_data=f"acc:{a['id']}")]
             for a in accs
         ]
-        buttons.append([InlineKeyboardButton("+ account", callback_data="addacc")])
+        row = self.db.fetchone(
+            """
+            SELECT t.name AS type_name
+            FROM account_groups g
+            JOIN account_types t ON g.type_id=t.id
+            WHERE g.id=? AND g.user_id=?
+            """,
+            (group_id, user_id),
+        )
+        if not row or row["type_name"] != "capital":
+            buttons.append([InlineKeyboardButton("+ account", callback_data="addacc")])
         buttons.append([InlineKeyboardButton("Rename group", callback_data="grename")])
         buttons.append([InlineKeyboardButton("Delete group", callback_data="gdelete")])
         buttons.append([InlineKeyboardButton("Back", callback_data="groupsback")])
@@ -42,6 +52,19 @@ class SettingsAccountsMixin:
     async def acc_add_prompt(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         query = update.callback_query
         await query.answer()
+        gid = context.user_data["group_id"]
+        row = self.db.fetchone(
+            """
+            SELECT t.name AS type_name
+            FROM account_groups g
+            JOIN account_types t ON g.type_id=t.id
+            WHERE g.id=? AND g.user_id=?
+            """,
+            (gid, update.effective_user.id),
+        )
+        if row and row["type_name"] == "capital":
+            await query.message.reply_text("Cannot create accounts in capital type")
+            return AG_ACCOUNTS
         await query.message.reply_text("Enter account name")
         return AG_ADD_ACCOUNT_NAME
 

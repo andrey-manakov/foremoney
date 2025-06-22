@@ -46,6 +46,7 @@ class FinanceBot(
                 AMOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.amount)],
                 TX_DATETIME: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.tx_datetime)],
                 ADD_ACCOUNT_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.add_account_name)],
+                ADD_ACCOUNT_VALUE: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.add_account_value)],
             },
             fallbacks=[CommandHandler("cancel", self.cancel)],
             allow_reentry=True,

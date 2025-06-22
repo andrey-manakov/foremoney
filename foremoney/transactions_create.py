@@ -18,8 +18,9 @@ from .states import (
     TO_GROUP,
     TO_ACCOUNT,
     AMOUNT,
-    TX_DATETIME,
     ADD_ACCOUNT_NAME,
+    ADD_ACCOUNT_VALUE,
+    TX_DATETIME,
 )
 
 class TransactionCreateMixin:
@@ -83,11 +84,23 @@ class TransactionCreateMixin:
         acc_labels = [
             {"id": a["id"], "name": f"{a['name']} ({a['value']})"} for a in accounts
         ]
+        row = self.db.fetchone(
+            """
+            SELECT t.name AS type_name
+            FROM account_groups g
+            JOIN account_types t ON g.type_id=t.id
+            WHERE g.id=? AND g.user_id=?
+            """,
+            (group_id, update.effective_user.id),
+        )
+        extra = ["+ account", "Back", "Cancel"]
+        if row and row["type_name"] == "capital":
+            extra = ["Back", "Cancel"]
         context.user_data["from_account_map"] = {lbl["name"]: lbl["id"] for lbl in acc_labels}
         context.user_data["account_prefix"] = "from"
         await update.message.reply_text(
             "Select source account",
-            reply_markup=items_reply_keyboard(acc_labels, ["+ account", "Back", "Cancel"], columns=2),
+            reply_markup=items_reply_keyboard(acc_labels, extra, columns=2),
         )
         return FROM_ACCOUNT
 
@@ -113,16 +126,136 @@ class TransactionCreateMixin:
                 reply_markup=items_reply_keyboard(acc_labels, ["+ account", "Back", "Cancel"], columns=2),
             )
             return FROM_ACCOUNT if prefix == "from" else TO_ACCOUNT
+        # prevent adding accounts inside capital type groups
+        row = self.db.fetchone(
+            """
+            SELECT t.name AS type_name
+            FROM account_groups g
+            JOIN account_types t ON g.type_id=t.id
+            WHERE g.id=? AND g.user_id=?
+            """,
+            (gid, user_id),
+        )
+        if row and row["type_name"] == "capital":
+            accounts = self.db.accounts_with_value(user_id, gid)
+            acc_labels = [
+                {"id": a["id"], "name": f"{a['name']} ({a['value']})"} for a in accounts
+            ]
+            acc_map_key = "from_account_map" if prefix == "from" else "to_account_map"
+            context.user_data[acc_map_key] = {lbl["name"]: lbl["id"] for lbl in acc_labels}
+            context.user_data["account_prefix"] = prefix
+            await update.message.reply_text(
+                "Cannot create accounts in capital type",
+                reply_markup=items_reply_keyboard(acc_labels, ["Back", "Cancel"], columns=2),
+            )
+            return FROM_ACCOUNT if prefix == "from" else TO_ACCOUNT
+
         name = text
-        self.db.add_account(user_id, gid, name)
+        acc_id = self.db.add_account(user_id, gid, name)
+        context.user_data["new_account_id"] = acc_id
+        await update.message.reply_text("Enter initial value")
+        return ADD_ACCOUNT_VALUE
+
+    async def add_account_value(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        text = update.message.text.strip()
+        try:
+            value = float(text)
+        except ValueError:
+            await update.message.reply_text("Please enter a number")
+            return ADD_ACCOUNT_VALUE
+
+        aid = context.user_data.pop("new_account_id")
+        gid = context.user_data["add_group"]
+        prefix = context.user_data["add_prefix"]
+        user_id = update.effective_user.id
+
+        if value != 0:
+            row = self.db.fetchone(
+                """
+                SELECT g.name AS group_name, t.name AS type_name
+                FROM account_groups g
+                JOIN account_types t ON g.type_id=t.id
+                WHERE g.id=? AND g.user_id=?
+                """,
+                (gid, user_id),
+            )
+            if row:
+                gname = row["group_name"]
+                tname = row["type_name"]
+                if tname == "assets":
+                    cap = self.db.fetchone(
+                        """
+                        SELECT a.id FROM accounts a
+                        JOIN account_groups g ON a.group_id=g.id
+                        JOIN account_types t ON g.type_id=t.id
+                        WHERE a.user_id=? AND t.name='capital' AND g.name='assets' AND a.name=?
+                        """,
+                        (user_id, gname),
+                    )
+                    if cap:
+                        self.db.add_transaction(user_id, cap["id"], aid, value)
+                elif tname == "liabilities":
+                    cap = self.db.fetchone(
+                        """
+                        SELECT a.id FROM accounts a
+                        JOIN account_groups g ON a.group_id=g.id
+                        JOIN account_types t ON g.type_id=t.id
+                        WHERE a.user_id=? AND t.name='capital' AND g.name='liabilities' AND a.name=?
+                        """,
+                        (user_id, gname),
+                    )
+                    if cap:
+                        self.db.add_transaction(user_id, aid, cap["id"], value)
+                elif tname == "expenditures":
+                    cap = self.db.fetchone(
+                        """
+                        SELECT a.id FROM accounts a
+                        JOIN account_groups g ON a.group_id=g.id
+                        JOIN account_types t ON g.type_id=t.id
+                        WHERE a.user_id=? AND t.name='capital' AND g.name='expenditures' AND a.name=?
+                        """,
+                        (user_id, gname),
+                    )
+                    if cap:
+                        self.db.add_transaction(user_id, cap["id"], aid, value)
+                elif tname == "income":
+                    cap = self.db.fetchone(
+                        """
+                        SELECT a.id FROM accounts a
+                        JOIN account_groups g ON a.group_id=g.id
+                        JOIN account_types t ON g.type_id=t.id
+                        WHERE a.user_id=? AND t.name='capital' AND g.name='income' AND a.name=?
+                        """,
+                        (user_id, gname),
+                    )
+                    if cap:
+                        self.db.add_transaction(user_id, aid, cap["id"], value)
+                elif tname == "capital":
+                    cap_id = self.db.correction_account(user_id)
+                    self.db.add_transaction(user_id, aid, cap_id, value)
+
         accounts = self.db.accounts_with_value(user_id, gid)
-        acc_labels = [{"id": a["id"], "name": f"{a['name']} ({a['value']})"} for a in accounts]
+        acc_labels = [
+            {"id": a["id"], "name": f"{a['name']} ({a['value']})"} for a in accounts
+        ]
+        row = self.db.fetchone(
+            """
+            SELECT t.name AS type_name
+            FROM account_groups g
+            JOIN account_types t ON g.type_id=t.id
+            WHERE g.id=? AND g.user_id=?
+            """,
+            (gid, user_id),
+        )
+        extra = ["+ account", "Back", "Cancel"]
+        if row and row["type_name"] == "capital":
+            extra = ["Back", "Cancel"]
         acc_map_key = "from_account_map" if prefix == "from" else "to_account_map"
         context.user_data[acc_map_key] = {lbl["name"]: lbl["id"] for lbl in acc_labels}
         context.user_data["account_prefix"] = prefix
         await update.message.reply_text(
             "Select account",
-            reply_markup=items_reply_keyboard(acc_labels, ["+ account", "Back", "Cancel"], columns=2),
+            reply_markup=items_reply_keyboard(acc_labels, extra, columns=2),
         )
         return FROM_ACCOUNT if prefix == "from" else TO_ACCOUNT
 
@@ -148,8 +281,21 @@ class TransactionCreateMixin:
             )
             return FROM_GROUP
         if text == "+ account":
+            gid = context.user_data["from_group"]
+            row = self.db.fetchone(
+                """
+                SELECT t.name AS type_name
+                FROM account_groups g
+                JOIN account_types t ON g.type_id=t.id
+                WHERE g.id=? AND g.user_id=?
+                """,
+                (gid, update.effective_user.id),
+            )
+            if row and row["type_name"] == "capital":
+                await update.message.reply_text("Cannot create accounts in capital type")
+                return FROM_ACCOUNT
             context.user_data["add_prefix"] = context.user_data.get("account_prefix")
-            context.user_data["add_group"] = context.user_data["from_group"]
+            context.user_data["add_group"] = gid
             await update.message.reply_text("Enter account name", reply_markup=ReplyKeyboardRemove())
             return ADD_ACCOUNT_NAME
         acc_map = context.user_data.get("from_account_map", {})
@@ -234,11 +380,23 @@ class TransactionCreateMixin:
         context.user_data["to_group"] = group_id
         accounts = self.db.accounts_with_value(update.effective_user.id, group_id)
         acc_labels = [{"id": a["id"], "name": f"{a['name']} ({a['value']})"} for a in accounts]
+        row = self.db.fetchone(
+            """
+            SELECT t.name AS type_name
+            FROM account_groups g
+            JOIN account_types t ON g.type_id=t.id
+            WHERE g.id=? AND g.user_id=?
+            """,
+            (group_id, update.effective_user.id),
+        )
+        extra = ["+ account", "Back", "Cancel"]
+        if row and row["type_name"] == "capital":
+            extra = ["Back", "Cancel"]
         context.user_data["to_account_map"] = {lbl["name"]: lbl["id"] for lbl in acc_labels}
         context.user_data["account_prefix"] = "to"
         await update.message.reply_text(
             "Select destination account",
-            reply_markup=items_reply_keyboard(acc_labels, ["+ account", "Back", "Cancel"], columns=2),
+            reply_markup=items_reply_keyboard(acc_labels, extra, columns=2),
         )
         return TO_ACCOUNT
 
@@ -264,8 +422,21 @@ class TransactionCreateMixin:
             )
             return TO_GROUP
         if text == "+ account":
+            gid = context.user_data["to_group"]
+            row = self.db.fetchone(
+                """
+                SELECT t.name AS type_name
+                FROM account_groups g
+                JOIN account_types t ON g.type_id=t.id
+                WHERE g.id=? AND g.user_id=?
+                """,
+                (gid, update.effective_user.id),
+            )
+            if row and row["type_name"] == "capital":
+                await update.message.reply_text("Cannot create accounts in capital type")
+                return TO_ACCOUNT
             context.user_data["add_prefix"] = context.user_data.get("account_prefix")
-            context.user_data["add_group"] = context.user_data["to_group"]
+            context.user_data["add_group"] = gid
             await update.message.reply_text("Enter account name", reply_markup=ReplyKeyboardRemove())
             return ADD_ACCOUNT_NAME
         acc_map = context.user_data.get("to_account_map", {})
