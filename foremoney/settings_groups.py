@@ -42,6 +42,7 @@ class SettingsGroupsMixin:
             await update.message.reply_text(
                 "Cancelled", reply_markup=self.main_menu_keyboard()
             )
+            context.user_data.clear()
             return ConversationHandler.END
         if text == "Back":
             await self.start_settings(update, context)
@@ -71,6 +72,7 @@ class SettingsGroupsMixin:
             await update.message.reply_text(
                 "Cancelled", reply_markup=self.main_menu_keyboard()
             )
+            context.user_data.clear()
             return ConversationHandler.END
         user_id = update.effective_user.id
         type_id = context.user_data["atype"]
@@ -91,6 +93,7 @@ class SettingsGroupsMixin:
             await update.message.reply_text(
                 "Cancelled", reply_markup=self.main_menu_keyboard()
             )
+            context.user_data.clear()
             return ConversationHandler.END
         if text == "Back":
             types = self.db.account_types_with_value(user_id)
@@ -153,6 +156,7 @@ class SettingsGroupsMixin:
             await update.message.reply_text(
                 "Cancelled", reply_markup=self.main_menu_keyboard()
             )
+            context.user_data.clear()
             return ConversationHandler.END
         gid = context.user_data["group_id"]
         user_id = update.effective_user.id

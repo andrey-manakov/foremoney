@@ -7,7 +7,10 @@ class MenuMixin:
     """Main menu and basic commands."""
 
     async def cancel(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-        await update.message.reply_text("Cancelled")
+        context.user_data.clear()
+        await update.message.reply_text(
+            "Cancelled", reply_markup=self.main_menu_keyboard()
+        )
         return ConversationHandler.END
 
     async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
