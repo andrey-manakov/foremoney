@@ -20,8 +20,10 @@ class SettingsAccountsMixin:
     """Manage individual accounts."""
 
     def accounts_keyboard(self, user_id: int, group_id: int, udata: dict) -> ReplyKeyboardMarkup:
-        accs = self.db.accounts(user_id, group_id)
-        labels = [{"id": a["id"], "name": a["name"]} for a in accs]
+        accs = self.db.accounts_with_value(user_id, group_id)
+        labels = [
+            {"id": a["id"], "name": f"{a['name']} ({a['value']})"} for a in accs
+        ]
         udata["ag_account_map"] = {lbl["name"]: lbl["id"] for lbl in labels}
         row = self.db.fetchone(
             """
