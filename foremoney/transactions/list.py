@@ -1,7 +1,7 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes, ConversationHandler
 
-from .states import TX_LIST, TX_DETAILS, TX_EDIT_AMOUNT
+from ..states import TX_LIST, TX_DETAILS, TX_EDIT_AMOUNT
 
 class TransactionListMixin:
     """Handlers for listing and editing transactions."""

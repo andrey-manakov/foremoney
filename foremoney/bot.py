@@ -11,8 +11,8 @@ from .config import get_settings
 from .database import Database
 from .states import *  # noqa: F401,F403
 from .menu import MenuMixin
-from .transactions_create import TransactionCreateMixin
-from .transactions_list import TransactionListMixin
+from .dashboard import DashboardMixin
+from .transactions import TransactionCreateMixin, TransactionListMixin
 from .settings_dashboard import SettingsDashboardMixin
 from .settings_groups import SettingsGroupsMixin
 from .settings_accounts import SettingsAccountsMixin
@@ -21,6 +21,7 @@ from .settings_accounts import SettingsAccountsMixin
 class FinanceBot(
     TransactionCreateMixin,
     TransactionListMixin,
+    DashboardMixin,
     SettingsDashboardMixin,
     SettingsGroupsMixin,
     SettingsAccountsMixin,
