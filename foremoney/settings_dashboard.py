@@ -1,4 +1,10 @@
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import (
+    Update,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    ReplyKeyboardMarkup,
+    KeyboardButton,
+)
 from telegram.ext import ContextTypes, ConversationHandler
 
 from .ui import items_keyboard
@@ -8,6 +14,15 @@ from .init_data import seed
 
 class SettingsDashboardMixin:
     """Manage dashboard accounts and database."""
+
+    def settings_menu_keyboard(self) -> ReplyKeyboardMarkup:
+        buttons = [
+            [KeyboardButton("Dashboard accounts")],
+            [KeyboardButton("Account groups")],
+            [KeyboardButton("Recreate database")],
+            [KeyboardButton("Back")],
+        ]
+        return ReplyKeyboardMarkup(buttons, resize_keyboard=True)
 
     async def start_settings(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         await update.message.reply_text(
