@@ -104,6 +104,7 @@ class SettingsDashboardMixin:
             await update.message.reply_text(
                 "Cancelled", reply_markup=self.main_menu_keyboard()
             )
+        context.user_data.clear()
         return ConversationHandler.END
 
     async def recreate_database(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:

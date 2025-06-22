@@ -44,6 +44,7 @@ class SettingsAccountsMixin:
             await update.message.reply_text(
                 "Cancelled", reply_markup=self.main_menu_keyboard()
             )
+            context.user_data.clear()
             return ConversationHandler.END
         acc_map = context.user_data.get("ag_account_map", {})
         if text not in acc_map:
@@ -93,6 +94,7 @@ class SettingsAccountsMixin:
             await update.message.reply_text(
                 "Cancelled", reply_markup=self.main_menu_keyboard()
             )
+            context.user_data.clear()
             return ConversationHandler.END
         gid = context.user_data["group_id"]
         user_id = update.effective_user.id
@@ -107,6 +109,7 @@ class SettingsAccountsMixin:
             await update.message.reply_text(
                 "Cancelled", reply_markup=self.main_menu_keyboard()
             )
+            context.user_data.clear()
             return ConversationHandler.END
         try:
             value = float(text)
@@ -197,6 +200,7 @@ class SettingsAccountsMixin:
             await update.message.reply_text(
                 "Cancelled", reply_markup=self.main_menu_keyboard()
             )
+            context.user_data.clear()
             return ConversationHandler.END
         aid = context.user_data["account_id"]
         user_id = update.effective_user.id
@@ -226,6 +230,7 @@ class SettingsAccountsMixin:
             await update.message.reply_text(
                 "Cancelled", reply_markup=self.main_menu_keyboard()
             )
+            context.user_data.clear()
             return ConversationHandler.END
         gid = context.user_data["group_id"]
         keyboard = self.accounts_keyboard(update.effective_user.id, gid, context.user_data)
