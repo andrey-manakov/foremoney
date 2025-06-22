@@ -18,7 +18,7 @@ class SettingsDashboardMixin:
     def settings_menu_keyboard(self) -> ReplyKeyboardMarkup:
         buttons = [
             [KeyboardButton("Dashboard accounts")],
-            [KeyboardButton("Account groups")],
+            [KeyboardButton("Accounts")],
             [KeyboardButton("Recreate database")],
             [KeyboardButton("Back")],
         ]
@@ -34,7 +34,7 @@ class SettingsDashboardMixin:
         text = update.message.text
         if text == "Dashboard accounts":
             return await self.start_dashboard_accounts(update, context)
-        if text == "Account groups":
+        if text == "Accounts":
             return await self.start_account_groups(update, context)
         if text == "Recreate database":
             return await self.recreate_database(update, context)
