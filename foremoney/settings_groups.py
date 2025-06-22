@@ -22,7 +22,7 @@ class SettingsGroupsMixin:
     """Manage account group operations."""
 
     def account_groups_keyboard(self, labels: list[dict[str, str]]) -> ReplyKeyboardMarkup:
-        return items_reply_keyboard(labels, ["+ group", "Back"], columns=2)
+        return items_reply_keyboard(labels, ["+ group", "Back", "Cancel"], columns=2)
 
     async def start_account_groups(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         user_id = update.effective_user.id
@@ -32,12 +32,17 @@ class SettingsGroupsMixin:
         context.user_data["ag_type_map"] = labels_map(type_labels)
         await update.message.reply_text(
             "Select account type",
-            reply_markup=items_reply_keyboard(type_labels, ["Back"], columns=2),
+            reply_markup=items_reply_keyboard(type_labels, ["Back", "Cancel"], columns=2),
         )
         return AG_TYPE_SELECT
 
     async def ag_type_selected(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         text = update.message.text
+        if text == "Cancel":
+            await update.message.reply_text(
+                "Cancelled", reply_markup=self.main_menu_keyboard()
+            )
+            return ConversationHandler.END
         if text == "Back":
             await self.start_settings(update, context)
             return SETTINGS_MENU
@@ -62,6 +67,11 @@ class SettingsGroupsMixin:
 
     async def ag_add_group_name(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         name = update.message.text.strip()
+        if name == "Cancel":
+            await update.message.reply_text(
+                "Cancelled", reply_markup=self.main_menu_keyboard()
+            )
+            return ConversationHandler.END
         user_id = update.effective_user.id
         type_id = context.user_data["atype"]
         self.db.add_account_group(user_id, type_id, name)
@@ -77,6 +87,11 @@ class SettingsGroupsMixin:
     async def ag_select_group(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         text = update.message.text
         user_id = update.effective_user.id
+        if text == "Cancel":
+            await update.message.reply_text(
+                "Cancelled", reply_markup=self.main_menu_keyboard()
+            )
+            return ConversationHandler.END
         if text == "Back":
             types = self.db.account_types_with_value(user_id)
             type_labels = make_labels(types)
@@ -134,6 +149,11 @@ class SettingsGroupsMixin:
 
     async def grename(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         name = update.message.text.strip()
+        if name == "Cancel":
+            await update.message.reply_text(
+                "Cancelled", reply_markup=self.main_menu_keyboard()
+            )
+            return ConversationHandler.END
         gid = context.user_data["group_id"]
         user_id = update.effective_user.id
         self.db.update_account_group_name(user_id, gid, name)
