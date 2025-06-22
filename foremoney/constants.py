@@ -6,6 +6,15 @@ ACCOUNT_TYPES = [
     "capital",
 ]
 
+# Short codes for account types used in transaction descriptions
+ACCOUNT_TYPE_CODES = {
+    "assets": "A",
+    "expenditures": "E",
+    "liabilities": "L",
+    "income": "I",
+    "capital": "C",
+}
+
 ACCOUNT_GROUPS = {
     "assets": [
         "cash",

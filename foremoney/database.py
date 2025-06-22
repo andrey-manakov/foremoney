@@ -139,10 +139,16 @@ class Database:
         return self.fetchall(
             """
             SELECT t.id, t.amount, t.ts,
-                   fa.name AS from_name, ta.name AS to_name
+                   fa.name AS from_name, ta.name AS to_name,
+                   fg.name AS from_group, tg.name AS to_group,
+                   ft.name AS from_type, tt.name AS to_type
             FROM transactions t
             JOIN accounts fa ON fa.id=t.from_account
+            JOIN account_groups fg ON fa.group_id=fg.id
+            JOIN account_types ft ON fg.type_id=ft.id
             JOIN accounts ta ON ta.id=t.to_account
+            JOIN account_groups tg ON ta.group_id=tg.id
+            JOIN account_types tt ON tg.type_id=tt.id
             WHERE t.user_id=?
             ORDER BY t.id DESC
             LIMIT ? OFFSET ?
@@ -154,10 +160,16 @@ class Database:
         return self.fetchone(
             """
             SELECT t.id, t.amount, t.ts,
-                   fa.name AS from_name, ta.name AS to_name
+                   fa.name AS from_name, ta.name AS to_name,
+                   fg.name AS from_group, tg.name AS to_group,
+                   ft.name AS from_type, tt.name AS to_type
             FROM transactions t
             JOIN accounts fa ON fa.id=t.from_account
+            JOIN account_groups fg ON fa.group_id=fg.id
+            JOIN account_types ft ON fg.type_id=ft.id
             JOIN accounts ta ON ta.id=t.to_account
+            JOIN account_groups tg ON ta.group_id=tg.id
+            JOIN account_types tt ON tg.type_id=tt.id
             WHERE t.user_id=? AND t.id=?
             """,
             (user_id, tx_id),
