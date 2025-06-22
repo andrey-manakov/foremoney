@@ -1,5 +1,12 @@
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import (
+    Update,
+    ReplyKeyboardMarkup,
+    ReplyKeyboardRemove,
+    KeyboardButton,
+)
 from telegram.ext import ContextTypes
+
+from .ui import items_reply_keyboard
 
 from .states import (
     AG_ADD_ACCOUNT_NAME,
@@ -12,12 +19,10 @@ from .states import (
 class SettingsAccountsMixin:
     """Manage individual accounts."""
 
-    def accounts_keyboard(self, user_id: int, group_id: int) -> InlineKeyboardMarkup:
+    def accounts_keyboard(self, user_id: int, group_id: int, udata: dict) -> ReplyKeyboardMarkup:
         accs = self.db.accounts(user_id, group_id)
-        buttons = [
-            [InlineKeyboardButton(a["name"], callback_data=f"acc:{a['id']}")]
-            for a in accs
-        ]
+        labels = [{"id": a["id"], "name": a["name"]} for a in accs]
+        udata["ag_account_map"] = {lbl["name"]: lbl["id"] for lbl in labels}
         row = self.db.fetchone(
             """
             SELECT t.name AS type_name
@@ -27,31 +32,37 @@ class SettingsAccountsMixin:
             """,
             (group_id, user_id),
         )
+        extra: list[str] = []
         if not row or row["type_name"] != "capital":
-            buttons.append([InlineKeyboardButton("+ account", callback_data="addacc")])
-        buttons.append([InlineKeyboardButton("Rename group", callback_data="grename")])
-        buttons.append([InlineKeyboardButton("Delete group", callback_data="gdelete")])
-        buttons.append([InlineKeyboardButton("Back", callback_data="groupsback")])
-        return InlineKeyboardMarkup(buttons)
+            extra.append("+ account")
+        extra.extend(["Rename group", "Delete group", "Back"])
+        return items_reply_keyboard(labels, extra, columns=2)
 
     async def acc_select(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-        query = update.callback_query
-        await query.answer()
-        aid = int(query.data.split(":")[1])
+        text = update.message.text
+        acc_map = context.user_data.get("ag_account_map", {})
+        if text not in acc_map:
+            await update.message.reply_text("Use provided buttons")
+            gid = context.user_data["group_id"]
+            keyboard = self.accounts_keyboard(update.effective_user.id, gid, context.user_data)
+            await update.message.reply_text("Accounts:", reply_markup=keyboard)
+            return AG_ACCOUNTS
+        aid = acc_map[text]
         context.user_data["account_id"] = aid
-        await query.message.reply_text(
+        await update.message.reply_text(
             "Account menu",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("Rename", callback_data="renacc")],
-                [InlineKeyboardButton("Delete", callback_data="delacc")],
-                [InlineKeyboardButton("Back", callback_data="accback")],
-            ]),
+            reply_markup=ReplyKeyboardMarkup(
+                [
+                    [KeyboardButton("Rename")],
+                    [KeyboardButton("Delete")],
+                    [KeyboardButton("Back")],
+                ],
+                resize_keyboard=True,
+            ),
         )
         return ACCOUNT_MENU
 
     async def acc_add_prompt(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-        query = update.callback_query
-        await query.answer()
         gid = context.user_data["group_id"]
         row = self.db.fetchone(
             """
@@ -63,9 +74,11 @@ class SettingsAccountsMixin:
             (gid, update.effective_user.id),
         )
         if row and row["type_name"] == "capital":
-            await query.message.reply_text("Cannot create accounts in capital type")
+            await update.message.reply_text("Cannot create accounts in capital type")
+            keyboard = self.accounts_keyboard(update.effective_user.id, gid, context.user_data)
+            await update.message.reply_text("Accounts:", reply_markup=keyboard)
             return AG_ACCOUNTS
-        await query.message.reply_text("Enter account name")
+        await update.message.reply_text("Enter account name", reply_markup=ReplyKeyboardRemove())
         return AG_ADD_ACCOUNT_NAME
 
     async def acc_add_name(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -151,16 +164,15 @@ class SettingsAccountsMixin:
                 elif tname == "capital":
                     cap_id = self.db.correction_account(user_id)
                     self.db.add_transaction(user_id, aid, cap_id, value)
+        keyboard = self.accounts_keyboard(user_id, gid, context.user_data)
         await update.message.reply_text(
             "Account added",
-            reply_markup=self.accounts_keyboard(user_id, gid),
+            reply_markup=keyboard,
         )
         return AG_ACCOUNTS
 
     async def account_rename_prompt(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-        query = update.callback_query
-        await query.answer()
-        await query.message.reply_text("Enter new name")
+        await update.message.reply_text("Enter new name", reply_markup=ReplyKeyboardRemove())
         return ACCOUNT_RENAME
 
     async def account_rename(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -169,32 +181,31 @@ class SettingsAccountsMixin:
         user_id = update.effective_user.id
         self.db.update_account_name(user_id, aid, name)
         gid = context.user_data["group_id"]
+        keyboard = self.accounts_keyboard(user_id, gid, context.user_data)
         await update.message.reply_text(
             "Account renamed",
-            reply_markup=self.accounts_keyboard(user_id, gid),
+            reply_markup=keyboard,
         )
         return AG_ACCOUNTS
 
     async def account_delete(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-        query = update.callback_query
-        await query.answer()
         aid = context.user_data["account_id"]
         gid = context.user_data["group_id"]
         user_id = update.effective_user.id
         await self._delete_account(user_id, aid)
-        await query.message.reply_text(
+        keyboard = self.accounts_keyboard(user_id, gid, context.user_data)
+        await update.message.reply_text(
             "Account deleted",
-            reply_markup=self.accounts_keyboard(user_id, gid),
+            reply_markup=keyboard,
         )
         return AG_ACCOUNTS
 
     async def account_menu_back(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-        query = update.callback_query
-        await query.answer()
         gid = context.user_data["group_id"]
-        await query.message.reply_text(
+        keyboard = self.accounts_keyboard(update.effective_user.id, gid, context.user_data)
+        await update.message.reply_text(
             "Accounts:",
-            reply_markup=self.accounts_keyboard(update.effective_user.id, gid),
+            reply_markup=keyboard,
         )
         return AG_ACCOUNTS
 
