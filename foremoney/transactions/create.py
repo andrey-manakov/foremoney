@@ -22,7 +22,7 @@ from ..states import (
     ADD_ACCOUNT_VALUE,
     TX_DATETIME,
 )
-from .helpers import make_labels, labels_map
+from .helpers import make_labels, labels_map, format_transaction
 
 class TransactionCreateMixin:
     """Flow for creating a transaction."""
@@ -468,7 +468,7 @@ class TransactionCreateMixin:
             self.db.update_transaction_amount(user_id, tx_id, amount)
             tx = self.db.transaction(user_id, tx_id)
             await update.message.reply_text(
-                f"{tx['from_name']} - {tx['amount']} -> {tx['to_name']}"
+                format_transaction(tx)
             )
             await update.message.reply_text(
                 "Transaction saved", reply_markup=self.main_menu_keyboard()
@@ -522,7 +522,7 @@ class TransactionCreateMixin:
         )
         tx = self.db.transaction(user_id, tx_id)
         await update.message.reply_text(
-            f"{tx['from_name']} - {tx['amount']} -> {tx['to_name']}"
+            format_transaction(tx)
         )
         await update.message.reply_text(
             "Transaction saved", reply_markup=self.main_menu_keyboard()

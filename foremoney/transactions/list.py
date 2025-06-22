@@ -1,6 +1,8 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes, ConversationHandler
 
+from .helpers import format_transaction
+
 from ..states import TX_LIST, TX_DETAILS, TX_EDIT_AMOUNT
 
 class TransactionListMixin:
@@ -14,7 +16,7 @@ class TransactionListMixin:
         txs = self.db.transactions(user_id, 10, offset)
         buttons = [
             [InlineKeyboardButton(
-                f"{tx['from_name']} - {tx['amount']} -> {tx['to_name']}",
+                format_transaction(tx),
                 callback_data=f"tx:{tx['id']}"
             )]
             for tx in txs
@@ -44,7 +46,7 @@ class TransactionListMixin:
                 return TX_LIST
             context.user_data["tx_id"] = tx_id
             await query.message.reply_text(
-                f"{tx['from_name']} - {tx['amount']} -> {tx['to_name']}",
+                format_transaction(tx),
                 reply_markup=InlineKeyboardMarkup(
                     [
                         [InlineKeyboardButton("Edit", callback_data="edit")],
@@ -82,7 +84,7 @@ class TransactionListMixin:
             self.db.update_transaction_amount(user_id, tx_id, amount)
             tx = self.db.transaction(user_id, tx_id)
             await update.message.reply_text(
-                f"{tx['from_name']} - {tx['amount']} -> {tx['to_name']}",
+                format_transaction(tx),
                 reply_markup=InlineKeyboardMarkup(
                     [
                         [InlineKeyboardButton("Edit", callback_data="edit")],
