@@ -26,7 +26,7 @@ class SettingsGroupsMixin:
 
     async def start_account_groups(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         user_id = update.effective_user.id
-        seed(self.db, user_id)
+        seed(self.db, self.db.family_id(user_id))
         types = self.db.account_types_with_value(user_id)
         type_labels = make_labels(types)
         context.user_data["ag_type_map"] = labels_map(type_labels)

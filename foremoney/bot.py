@@ -16,6 +16,7 @@ from .transactions import TransactionCreateMixin, TransactionListMixin
 from .settings_dashboard import SettingsDashboardMixin
 from .settings_groups import SettingsGroupsMixin
 from .settings_accounts import SettingsAccountsMixin
+from .settings_family import SettingsFamilyMixin
 
 
 class FinanceBot(
@@ -25,6 +26,7 @@ class FinanceBot(
     SettingsDashboardMixin,
     SettingsGroupsMixin,
     SettingsAccountsMixin,
+    SettingsFamilyMixin,
     MenuMixin,
 ):
     def __init__(self) -> None:

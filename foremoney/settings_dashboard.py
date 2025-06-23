@@ -22,7 +22,10 @@ class SettingsDashboardMixin:
                 KeyboardButton("Accounts"),
             ],
             [
+                KeyboardButton("Add family"),
                 KeyboardButton("Recreate database"),
+            ],
+            [
                 KeyboardButton("Back"),
             ],
         ]
@@ -40,6 +43,8 @@ class SettingsDashboardMixin:
             return await self.start_dashboard_accounts(update, context)
         if text == "Accounts":
             return await self.start_account_groups(update, context)
+        if text == "Add family":
+            return await self.invite_family(update, context)
         if text == "Recreate database":
             return await self.recreate_database(update, context)
         if text == "Back":
@@ -117,6 +122,6 @@ class SettingsDashboardMixin:
         if self.settings.database_path.exists():
             self.settings.database_path.unlink()
         self.db = Database(self.settings.database_path)
-        seed(self.db, user_id)
+        seed(self.db, self.db.family_id(user_id))
         await update.message.reply_text("Database recreated")
         return SETTINGS_MENU
