@@ -15,7 +15,13 @@ class MenuMixin:
 
     async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user_id = update.effective_user.id
-        seed(self.db, user_id)
+        if context.args and context.args[0].startswith("join_"):
+            token = context.args[0][5:]
+            if self.db.use_family_invite(token, user_id):
+                await update.message.reply_text("You joined the family!")
+            else:
+                await update.message.reply_text("Invalid invite link")
+        seed(self.db, self.db.family_id(user_id))
         await update.message.reply_text(
             "Welcome to ForeMoney bot!",
             reply_markup=self.main_menu_keyboard(),

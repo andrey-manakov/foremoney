@@ -1,6 +1,7 @@
 import sqlite3
 from pathlib import Path
 from typing import Iterable, Tuple
+import secrets
 
 
 SCHEMA = [
@@ -47,6 +48,18 @@ SCHEMA = [
         value TEXT
     );
     """,
+    """
+    CREATE TABLE IF NOT EXISTS user_family (
+        user_id INTEGER PRIMARY KEY,
+        family_id INTEGER NOT NULL
+    );
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS family_invites (
+        token TEXT PRIMARY KEY,
+        family_id INTEGER NOT NULL
+    );
+    """,
 ]
 
 
@@ -83,16 +96,48 @@ class Database:
 
     # ---- high level helpers ----
 
+    def family_id(self, user_id: int) -> int:
+        row = self.fetchone(
+            "SELECT family_id FROM user_family WHERE user_id=?",
+            (user_id,),
+        )
+        return row["family_id"] if row else user_id
+
+    def create_family_invite(self, family_id: int) -> str:
+        token = secrets.token_urlsafe(8)
+        self.execute(
+            "INSERT INTO family_invites (token, family_id) VALUES (?, ?)",
+            (token, family_id),
+        )
+        return token
+
+    def use_family_invite(self, token: str, user_id: int) -> bool:
+        row = self.fetchone(
+            "SELECT family_id FROM family_invites WHERE token=?",
+            (token,),
+        )
+        if not row:
+            return False
+        family_id = row["family_id"]
+        self.execute("DELETE FROM family_invites WHERE token=?", (token,))
+        self.execute(
+            "INSERT OR REPLACE INTO user_family (user_id, family_id) VALUES (?, ?)",
+            (user_id, family_id),
+        )
+        return True
+
     def account_types(self) -> Iterable[sqlite3.Row]:
         return self.fetchall("SELECT id, name FROM account_types ORDER BY name")
 
     def account_groups(self, user_id: int, type_id: int) -> Iterable[sqlite3.Row]:
+        user_id = self.family_id(user_id)
         return self.fetchall(
             "SELECT id, name FROM account_groups WHERE user_id=? AND type_id=? ORDER BY name",
             (user_id, type_id),
         )
 
     def accounts(self, user_id: int, group_id: int) -> Iterable[sqlite3.Row]:
+        user_id = self.family_id(user_id)
         return self.fetchall(
             """
             SELECT id, name FROM accounts
@@ -103,6 +148,7 @@ class Database:
         )
 
     def add_account(self, user_id: int, group_id: int, name: str) -> int:
+        user_id = self.family_id(user_id)
         cur = self.execute(
             "INSERT INTO accounts (user_id, group_id, name) VALUES (?, ?, ?)",
             (user_id, group_id, name),
@@ -117,6 +163,7 @@ class Database:
         amount: float,
         ts: str | None = None,
     ) -> int:
+        user_id = self.family_id(user_id)
         if ts is not None:
             cur = self.execute(
                 """
@@ -136,6 +183,7 @@ class Database:
         return cur.lastrowid
 
     def transactions(self, user_id: int, limit: int, offset: int) -> Iterable[sqlite3.Row]:
+        user_id = self.family_id(user_id)
         return self.fetchall(
             """
             SELECT t.id, t.amount, t.ts,
@@ -157,6 +205,7 @@ class Database:
         )
 
     def transaction(self, user_id: int, tx_id: int) -> sqlite3.Row | None:
+        user_id = self.family_id(user_id)
         return self.fetchone(
             """
             SELECT t.id, t.amount, t.ts,
@@ -176,9 +225,11 @@ class Database:
         )
 
     def delete_transaction(self, user_id: int, tx_id: int) -> None:
+        user_id = self.family_id(user_id)
         self.execute("DELETE FROM transactions WHERE user_id=? AND id=?", (user_id, tx_id))
 
     def update_transaction_amount(self, user_id: int, tx_id: int, amount: float) -> None:
+        user_id = self.family_id(user_id)
         self.execute(
             "UPDATE transactions SET amount=? WHERE user_id=? AND id=?",
             (amount, user_id, tx_id),
@@ -187,6 +238,7 @@ class Database:
     # ----- settings helpers -----
 
     def set_setting(self, user_id: int, key: str, value: str) -> None:
+        user_id = self.family_id(user_id)
         exists = self.fetchone(
             "SELECT id FROM settings WHERE user_id=? AND key=?",
             (user_id, key),
@@ -203,6 +255,7 @@ class Database:
             )
 
     def get_setting(self, user_id: int, key: str) -> str | None:
+        user_id = self.family_id(user_id)
         row = self.fetchone(
             "SELECT value FROM settings WHERE user_id=? AND key=?",
             (user_id, key),
@@ -212,6 +265,7 @@ class Database:
     # ----- account/group management -----
 
     def add_account_group(self, user_id: int, type_id: int, name: str) -> int:
+        user_id = self.family_id(user_id)
         cur = self.execute(
             "INSERT INTO account_groups (user_id, type_id, name) VALUES (?, ?, ?)",
             (user_id, type_id, name),
@@ -219,30 +273,35 @@ class Database:
         return cur.lastrowid
 
     def update_account_group_name(self, user_id: int, group_id: int, name: str) -> None:
+        user_id = self.family_id(user_id)
         self.execute(
             "UPDATE account_groups SET name=? WHERE user_id=? AND id=?",
             (name, user_id, group_id),
         )
 
     def archive_account_group(self, user_id: int, group_id: int) -> None:
+        user_id = self.family_id(user_id)
         self.execute(
             "UPDATE account_groups SET archived=1 WHERE user_id=? AND id=?",
             (user_id, group_id),
         )
 
     def update_account_name(self, user_id: int, account_id: int, name: str) -> None:
+        user_id = self.family_id(user_id)
         self.execute(
             "UPDATE accounts SET name=? WHERE user_id=? AND id=?",
             (name, user_id, account_id),
         )
 
     def archive_account(self, user_id: int, account_id: int) -> None:
+        user_id = self.family_id(user_id)
         self.execute(
             "UPDATE accounts SET archived=1 WHERE user_id=? AND id=?",
             (user_id, account_id),
         )
 
     def all_accounts(self, user_id: int, include_archived: bool = False) -> Iterable[sqlite3.Row]:
+        user_id = self.family_id(user_id)
         query = """
             SELECT a.id, a.name, g.name AS group_name
             FROM accounts a
@@ -253,6 +312,7 @@ class Database:
         return self.fetchall(query, (user_id,))
 
     def account_balance(self, user_id: int, account_id: int) -> float:
+        user_id = self.family_id(user_id)
         inc = self.fetchone(
             "SELECT COALESCE(SUM(amount),0) AS s FROM transactions WHERE user_id=? AND to_account=?",
             (user_id, account_id),
@@ -265,6 +325,7 @@ class Database:
 
     def account_value(self, user_id: int, account_id: int) -> float:
         """Return account value based on its type."""
+        user_id = self.family_id(user_id)
         bal = self.account_balance(user_id, account_id)
         row = self.fetchone(
             """
@@ -282,6 +343,7 @@ class Database:
 
     def accounts_with_value(self, user_id: int, group_id: int):
         """Return accounts list with calculated values."""
+        user_id = self.family_id(user_id)
         accs = self.accounts(user_id, group_id)
         result = []
         for a in accs:
@@ -291,6 +353,7 @@ class Database:
 
     def account_group_value(self, user_id: int, group_id: int) -> float:
         """Return total value of all accounts within a group."""
+        user_id = self.family_id(user_id)
         total = 0.0
         for acc in self.accounts(user_id, group_id):
             total += self.account_value(user_id, acc["id"])
@@ -298,6 +361,7 @@ class Database:
 
     def account_groups_with_value(self, user_id: int, type_id: int):
         """Return account groups list with calculated values."""
+        user_id = self.family_id(user_id)
         groups = self.account_groups(user_id, type_id)
         result = []
         for g in groups:
@@ -307,6 +371,7 @@ class Database:
 
     def account_type_value(self, user_id: int, type_id: int) -> float:
         """Return total value of all accounts within a type."""
+        user_id = self.family_id(user_id)
         total = 0.0
         for g in self.account_groups(user_id, type_id):
             total += self.account_group_value(user_id, g["id"])
@@ -314,6 +379,7 @@ class Database:
 
     def account_types_with_value(self, user_id: int):
         """Return account types list with calculated values."""
+        user_id = self.family_id(user_id)
         types = self.account_types()
         result = []
         for t in types:
@@ -322,12 +388,14 @@ class Database:
         return result
 
     def accounts_balance(self, user_id: int, account_ids: Iterable[int]) -> float:
+        user_id = self.family_id(user_id)
         total = 0.0
         for aid in account_ids:
             total += self.account_balance(user_id, aid)
         return total
 
     def correction_account(self, user_id: int) -> int:
+        user_id = self.family_id(user_id)
         row = self.fetchone(
             """
             SELECT a.id FROM accounts a
@@ -357,6 +425,7 @@ class Database:
 
     def account_type_transactions(self, user_id: int, type_id: int):
         """Return transactions affecting given account type ordered by time."""
+        user_id = self.family_id(user_id)
         return self.fetchall(
             """
             SELECT t.ts, t.amount,
@@ -377,6 +446,7 @@ class Database:
 
     def account_group_transactions(self, user_id: int, group_id: int):
         """Return transactions affecting given account group ordered by time."""
+        user_id = self.family_id(user_id)
         return self.fetchall(
             """
             SELECT t.ts, t.amount,
@@ -394,3 +464,4 @@ class Database:
             """,
             (user_id, group_id, group_id),
         )
+

@@ -29,7 +29,8 @@ class TransactionCreateMixin:
 
     async def start_create_transaction(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         user_id = update.effective_user.id
-        seed(self.db, user_id)
+        family_id = self.db.family_id(user_id)
+        seed(self.db, family_id)
         types = self.db.account_types_with_value(user_id)
         type_labels = make_labels(types)
         context.user_data["from_type_map"] = labels_map(type_labels)
