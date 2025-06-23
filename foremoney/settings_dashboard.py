@@ -17,10 +17,14 @@ class SettingsDashboardMixin:
 
     def settings_menu_keyboard(self) -> ReplyKeyboardMarkup:
         buttons = [
-            [KeyboardButton("Dashboard accounts")],
-            [KeyboardButton("Accounts")],
-            [KeyboardButton("Recreate database")],
-            [KeyboardButton("Back")],
+            [
+                KeyboardButton("Dashboard accounts"),
+                KeyboardButton("Accounts"),
+            ],
+            [
+                KeyboardButton("Recreate database"),
+                KeyboardButton("Back"),
+            ],
         ]
         return ReplyKeyboardMarkup(buttons, resize_keyboard=True)
 
