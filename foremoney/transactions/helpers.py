@@ -18,15 +18,26 @@ def labels_map(labels: Iterable[Mapping[str, Any]]) -> dict[str, int]:
 
 
 def format_transaction(tx: Mapping[str, Any]) -> str:
-    """Return short description of a transaction for inline buttons."""
+    """Return detailed description of a transaction."""
     from ..constants import ACCOUNT_TYPE_CODES
 
     f_code = ACCOUNT_TYPE_CODES.get(tx["from_type"], "?")
     t_code = ACCOUNT_TYPE_CODES.get(tx["to_type"], "?")
+
+    ts = tx.get("ts")
+    if ts:
+        try:
+            ts = datetime.fromisoformat(str(ts)).strftime("%Y-%m-%d %H:%M")
+        except ValueError:
+            ts = str(ts)
+    else:
+        ts = "N/A"
+
     return (
-        f"{f_code}-{tx['from_name']} "
-        f"-{tx['amount']}-> "
-        f"{t_code}-{tx['to_name']}"
+        f"from: {f_code} - {tx['from_group']} - {tx['from_name']}\n"
+        f"to: {t_code} - {tx['to_group']} - {tx['to_name']}\n"
+        f"amount: {tx['amount']}\n"
+        f"date: {ts}"
     )
 
 
