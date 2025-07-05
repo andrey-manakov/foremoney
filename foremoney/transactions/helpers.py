@@ -24,9 +24,9 @@ def format_transaction(tx: Mapping[str, Any]) -> str:
     f_code = ACCOUNT_TYPE_CODES.get(tx["from_type"], "?")
     t_code = ACCOUNT_TYPE_CODES.get(tx["to_type"], "?")
     return (
-        f"{f_code}-{tx['from_group']}-{tx['from_name']} "
+        f"{f_code}-{tx['from_name']} "
         f"-{tx['amount']}-> "
-        f"{t_code}-{tx['to_group']}-{tx['to_name']}"
+        f"{t_code}-{tx['to_name']}"
     )
 
 
@@ -34,7 +34,7 @@ def transaction_summary(tx: Mapping[str, Any]) -> str:
     """Return single-line summary of a transaction for list view."""
     data = dict(tx)
     return (
-        f"{data['from_group']} - {data['from_name']} "
+        f"{data['from_name']} "
         f"-> {data['amount']} -> "
-        f"{data['to_group']} - {data['to_name']}"
+        f"{data['to_name']}"
     )
