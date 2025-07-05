@@ -59,6 +59,8 @@ class TransactionListMixin:
 
     async def tx_filter_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         text = update.message.text
+        if text == "Transactions":
+            return await self.start_transactions(update, context)
         if text == "Cancel":
             await update.message.reply_text(
                 "Cancelled", reply_markup=self.main_menu_keyboard()
