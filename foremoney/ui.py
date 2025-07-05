@@ -28,12 +28,15 @@ def items_reply_keyboard(
     items: Iterable[Mapping],
     extra_labels: Sequence[str] | None = None,
     columns: int = 1,
+    extra_columns: int | None = None,
 ) -> ReplyKeyboardMarkup:
     """Create ReplyKeyboardMarkup from DB rows.
 
     ``items`` should be an iterable of mappings with at least ``name`` key.
-    ``extra_labels`` if provided will be appended as last row of buttons.
+    ``extra_labels`` if provided will be appended at the end.
     ``columns`` controls how many buttons are placed in a single row.
+    ``extra_columns`` controls how many extra buttons are placed per row. If
+    ``None`` they all appear on a single row for backwards compatibility.
     """
     buttons: list[list[KeyboardButton]] = []
     row: list[KeyboardButton] = []
@@ -45,5 +48,15 @@ def items_reply_keyboard(
     if row:
         buttons.append(row)
     if extra_labels:
-        buttons.append([KeyboardButton(lbl) for lbl in extra_labels])
+        if extra_columns is None:
+            buttons.append([KeyboardButton(lbl) for lbl in extra_labels])
+        else:
+            row = []
+            for idx, lbl in enumerate(extra_labels, 1):
+                row.append(KeyboardButton(lbl))
+                if idx % extra_columns == 0:
+                    buttons.append(row)
+                    row = []
+            if row:
+                buttons.append(row)
     return ReplyKeyboardMarkup(buttons, resize_keyboard=True)
