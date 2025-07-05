@@ -21,10 +21,12 @@ def format_transaction(tx: Mapping[str, Any]) -> str:
     """Return detailed description of a transaction."""
     from ..constants import ACCOUNT_TYPE_CODES
 
-    f_code = ACCOUNT_TYPE_CODES.get(tx["from_type"], "?")
-    t_code = ACCOUNT_TYPE_CODES.get(tx["to_type"], "?")
+    data = dict(tx)
 
-    ts = tx.get("ts")
+    f_code = ACCOUNT_TYPE_CODES.get(data["from_type"], "?")
+    t_code = ACCOUNT_TYPE_CODES.get(data["to_type"], "?")
+
+    ts = data.get("ts")
     if ts:
         try:
             ts = datetime.fromisoformat(str(ts)).strftime("%Y-%m-%d %H:%M")
@@ -34,9 +36,9 @@ def format_transaction(tx: Mapping[str, Any]) -> str:
         ts = "N/A"
 
     return (
-        f"from: {f_code} - {tx['from_group']} - {tx['from_name']}\n"
-        f"to: {t_code} - {tx['to_group']} - {tx['to_name']}\n"
-        f"amount: {tx['amount']}\n"
+        f"from: {f_code} - {data['from_group']} - {data['from_name']}\n"
+        f"to: {t_code} - {data['to_group']} - {data['to_name']}\n"
+        f"amount: {data['amount']}\n"
         f"date: {ts}"
     )
 
