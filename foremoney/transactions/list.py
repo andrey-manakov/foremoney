@@ -1,7 +1,7 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes, ConversationHandler
 
-from .helpers import format_transaction
+from .helpers import format_transaction, transaction_summary
 
 from ..states import TX_LIST, TX_DETAILS, TX_EDIT_AMOUNT
 
@@ -15,10 +15,11 @@ class TransactionListMixin:
         msg_obj = sender if hasattr(sender, "reply_text") else sender.message
         txs = self.db.transactions(user_id, 10, offset)
         buttons = [
-            [InlineKeyboardButton(
-                format_transaction(tx),
-                callback_data=f"tx:{tx['id']}"
-            )]
+            [
+                InlineKeyboardButton(
+                    transaction_summary(tx), callback_data=f"tx:{tx['id']}"
+                )
+            ]
             for tx in txs
         ]
         if txs:

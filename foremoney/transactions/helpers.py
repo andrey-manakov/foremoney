@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Iterable, Mapping, Any
+from datetime import datetime
 
 
 def make_labels(items: Iterable[Mapping[str, Any]]) -> list[dict[str, Any]]:
@@ -26,4 +27,20 @@ def format_transaction(tx: Mapping[str, Any]) -> str:
         f"{f_code}-{tx['from_group']}-{tx['from_name']} "
         f"-{tx['amount']}-> "
         f"{t_code}-{tx['to_group']}-{tx['to_name']}"
+    )
+
+
+def transaction_summary(tx: Mapping[str, Any]) -> str:
+    """Return multiline summary of a transaction for list view."""
+    if tx.get("ts"):
+        try:
+            date = datetime.fromisoformat(str(tx["ts"])).strftime("%Y-%m-%d")
+        except ValueError:
+            date = str(tx["ts"])[:10]
+    else:
+        date = ""
+    return (
+        f"from: {tx['from_group']} - {tx['from_name']}\n"
+        f"to: {tx['to_group']} - {tx['to_name']}\n"
+        f"amount: {tx['amount']}, date: {date}"
     )
