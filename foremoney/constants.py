@@ -28,6 +28,7 @@ ACCOUNT_GROUPS = {
         "Education",
         "Living space",
         "Entertainment",
+        "Food",
         "Transport",
         "Health & Sport",
         "Culture",
