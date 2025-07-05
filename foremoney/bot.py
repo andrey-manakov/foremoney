@@ -59,9 +59,19 @@ class FinanceBot(
         tx_conv = ConversationHandler(
             entry_points=[MessageHandler(filters.Regex("^Transactions$"), self.start_transactions)],
             states={
-                TX_LIST: [CallbackQueryHandler(self.tx_list_actions)],
+                TX_LIST: [
+                    CallbackQueryHandler(self.tx_list_actions),
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, self.tx_filter_menu),
+                ],
                 TX_DETAILS: [CallbackQueryHandler(self.tx_details_action)],
                 TX_EDIT_AMOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.tx_edit_amount)],
+                TX_FILTER_MIN_DATE: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.tx_filter_min_date)],
+                TX_FILTER_MAX_DATE: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.tx_filter_max_date)],
+                TX_FILTER_MIN_AMOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.tx_filter_min_amount)],
+                TX_FILTER_MAX_AMOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.tx_filter_max_amount)],
+                TX_FILTER_ACC_TYPE: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.tx_filter_acc_type)],
+                TX_FILTER_GROUP: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.tx_filter_group)],
+                TX_FILTER_ACCOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.tx_filter_account)],
             },
             fallbacks=[CommandHandler("cancel", self.cancel)],
             allow_reentry=True,
