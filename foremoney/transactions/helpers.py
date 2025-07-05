@@ -32,15 +32,16 @@ def format_transaction(tx: Mapping[str, Any]) -> str:
 
 def transaction_summary(tx: Mapping[str, Any]) -> str:
     """Return multiline summary of a transaction for list view."""
-    if tx.get("ts"):
+    data = dict(tx)
+    if data.get("ts"):
         try:
-            date = datetime.fromisoformat(str(tx["ts"])).strftime("%Y-%m-%d")
+            date = datetime.fromisoformat(str(data["ts"])).strftime("%Y-%m-%d")
         except ValueError:
-            date = str(tx["ts"])[:10]
+            date = str(data["ts"])[:10]
     else:
         date = ""
     return (
-        f"from: {tx['from_group']} - {tx['from_name']}\n"
-        f"to: {tx['to_group']} - {tx['to_name']}\n"
-        f"amount: {tx['amount']}, date: {date}"
+        f"from: {data['from_group']} - {data['from_name']}\n"
+        f"to: {data['to_group']} - {data['to_name']}\n"
+        f"amount: {data['amount']}, date: {date}"
     )
