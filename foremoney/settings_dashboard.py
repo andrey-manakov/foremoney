@@ -4,12 +4,13 @@ from telegram import (
     InlineKeyboardMarkup,
     ReplyKeyboardMarkup,
     KeyboardButton,
+    InputFile,
 )
 from telegram.ext import ContextTypes, ConversationHandler
+from io import BytesIO
 
-from .ui import items_keyboard
-from .states import SETTINGS_MENU, DASHBOARD_ACCOUNTS
-from .database import Database
+from .states import SETTINGS_MENU, DASHBOARD_ACCOUNTS, IMPORT_WAIT_FILE
+from .database import Database, export_archive, import_archive
 from .init_data import seed
 
 class SettingsDashboardMixin:
@@ -24,6 +25,10 @@ class SettingsDashboardMixin:
             [
                 KeyboardButton("Add family"),
                 KeyboardButton("Recreate database"),
+            ],
+            [
+                KeyboardButton("Export data"),
+                KeyboardButton("Import data"),
             ],
             [
                 KeyboardButton("Back"),
@@ -47,6 +52,10 @@ class SettingsDashboardMixin:
             return await self.invite_family(update, context)
         if text == "Recreate database":
             return await self.recreate_database(update, context)
+        if text == "Export data":
+            return await self.export_data(update, context)
+        if text == "Import data":
+            return await self.import_data_prompt(update, context)
         if text == "Back":
             await update.message.reply_text(
                 "Back to menu", reply_markup=self.main_menu_keyboard()
@@ -124,4 +133,33 @@ class SettingsDashboardMixin:
         self.db = Database(self.settings.database_path)
         seed(self.db, self.db.family_id(user_id))
         await update.message.reply_text("Database recreated")
+        return SETTINGS_MENU
+
+    async def export_data(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        data = export_archive(self.settings.database_path)
+        await update.message.reply_document(
+            InputFile(BytesIO(data), filename="foremoney_export.zip")
+        )
+        return SETTINGS_MENU
+
+    async def import_data_prompt(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        await update.message.reply_text(
+            "Send ZIP archive to import. Current database will be replaced."
+        )
+        return IMPORT_WAIT_FILE
+
+    async def import_data_file(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        doc = update.message.document
+        if not doc:
+            await update.message.reply_text("Please send a ZIP archive")
+            return IMPORT_WAIT_FILE
+        file = await doc.get_file()
+        buf = BytesIO()
+        await file.download_to_memory(buf)
+        buf.seek(0)
+        import_archive(self.settings.database_path, buf.getvalue())
+        self.db = Database(self.settings.database_path)
+        await update.message.reply_text(
+            "Database imported", reply_markup=self.settings_menu_keyboard()
+        )
         return SETTINGS_MENU

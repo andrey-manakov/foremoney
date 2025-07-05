@@ -14,6 +14,7 @@ implements transaction management, dashboard charts and a settings section.
   selecting which accounts appear on the dashboard.
 - SQLite database for storing all data. The database structure is created
   automatically and can be recreated from the Settings menu.
+- Data export/import of the entire database via a zipped collection of CSV files.
 - `.env` configuration using `python-dotenv`.
 - `deploy.sh` script installs dependencies in a virtual environment and
   configures a systemd service.

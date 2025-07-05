@@ -2,6 +2,9 @@ import sqlite3
 from pathlib import Path
 from typing import Iterable, Tuple
 import secrets
+import csv
+from io import StringIO, BytesIO
+from zipfile import ZipFile, ZIP_DEFLATED
 
 
 SCHEMA = [
@@ -489,4 +492,55 @@ class Database:
             """,
             (user_id, group_id, group_id),
         )
+
+
+def export_archive(db_path: Path) -> bytes:
+    """Return a ZIP archive with CSV files of all DB tables."""
+    conn = sqlite3.connect(db_path)
+    cur = conn.cursor()
+    tables = [row[0] for row in cur.execute(
+        "SELECT name FROM sqlite_master WHERE type='table'"
+    )]
+    buf = BytesIO()
+    with ZipFile(buf, "w", compression=ZIP_DEFLATED) as zf:
+        for table in tables:
+            rows = cur.execute(f"SELECT * FROM {table}").fetchall()
+            cols = [d[0] for d in cur.description]
+            s_buf = StringIO()
+            writer = csv.writer(s_buf)
+            writer.writerow(cols)
+            writer.writerows(rows)
+            zf.writestr(f"{table}.csv", s_buf.getvalue())
+    conn.close()
+    buf.seek(0)
+    return buf.getvalue()
+
+
+def import_archive(db_path: Path, data: bytes) -> None:
+    """Replace DB with tables provided in the ZIP archive."""
+    if db_path.exists():
+        db_path.unlink()
+    db = Database(db_path)  # create schema
+    db.conn.close()
+    conn = sqlite3.connect(db_path)
+    cur = conn.cursor()
+    with ZipFile(BytesIO(data)) as zf:
+        for name in zf.namelist():
+            if not name.endswith(".csv"):
+                continue
+            table = Path(name).stem
+            content = zf.read(name).decode()
+            reader = csv.reader(StringIO(content))
+            rows = list(reader)
+            if not rows:
+                continue
+            header = rows[0]
+            placeholders = ",".join("?" * len(header))
+            for row in rows[1:]:
+                cur.execute(
+                    f"INSERT INTO {table} ({','.join(header)}) VALUES ({placeholders})",
+                    row,
+                )
+    conn.commit()
+    conn.close()
 

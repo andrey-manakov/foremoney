@@ -37,4 +37,5 @@
     TX_FILTER_ACC_TYPE,
     TX_FILTER_GROUP,
     TX_FILTER_ACCOUNT,
-) = range(37)
+    IMPORT_WAIT_FILE,
+) = range(38)
