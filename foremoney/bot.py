@@ -130,6 +130,10 @@ class FinanceBot(
                     MessageHandler(filters.TEXT & ~filters.COMMAND, self.account_menu_back),
                 ],
                 ACCOUNT_RENAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.account_rename)],
+                IMPORT_WAIT_FILE: [
+                    MessageHandler(filters.Document.ALL, self.import_data_file),
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, self.import_data_file),
+                ],
             },
             fallbacks=[CommandHandler("cancel", self.cancel)],
         )
