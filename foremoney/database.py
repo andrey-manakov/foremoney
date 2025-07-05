@@ -182,10 +182,16 @@ class Database:
             )
         return cur.lastrowid
 
-    def transactions(self, user_id: int, limit: int, offset: int) -> Iterable[sqlite3.Row]:
+    def transactions(
+        self,
+        user_id: int,
+        limit: int,
+        offset: int,
+        filters: dict | None = None,
+    ) -> Iterable[sqlite3.Row]:
+        """Return transactions list applying optional filters."""
         user_id = self.family_id(user_id)
-        return self.fetchall(
-            """
+        query = """
             SELECT t.id, t.amount, t.ts,
                    fa.name AS from_name, ta.name AS to_name,
                    fg.name AS from_group, tg.name AS to_group,
@@ -198,11 +204,30 @@ class Database:
             JOIN account_groups tg ON ta.group_id=tg.id
             JOIN account_types tt ON tg.type_id=tt.id
             WHERE t.user_id=?
-            ORDER BY t.id DESC
-            LIMIT ? OFFSET ?
-            """,
-            (user_id, limit, offset),
-        )
+        """
+        params: list = [user_id]
+        if filters:
+            if filters.get("min_date"):
+                query += " AND date(t.ts) >= date(?)"
+                params.append(filters["min_date"])
+            if filters.get("max_date"):
+                query += " AND date(t.ts) <= date(?)"
+                params.append(filters["max_date"])
+            if filters.get("min_amount") is not None:
+                query += " AND t.amount >= ?"
+                params.append(filters["min_amount"])
+            if filters.get("max_amount") is not None:
+                query += " AND t.amount <= ?"
+                params.append(filters["max_amount"])
+            if filters.get("group_id"):
+                query += " AND (fg.id=? OR tg.id=?)"
+                params.extend([filters["group_id"], filters["group_id"]])
+            if filters.get("account_id"):
+                query += " AND (fa.id=? OR ta.id=?)"
+                params.extend([filters["account_id"], filters["account_id"]])
+        query += " ORDER BY t.id DESC LIMIT ? OFFSET ?"
+        params.extend([limit, offset])
+        return self.fetchall(query, params)
 
     def transaction(self, user_id: int, tx_id: int) -> sqlite3.Row | None:
         user_id = self.family_id(user_id)
