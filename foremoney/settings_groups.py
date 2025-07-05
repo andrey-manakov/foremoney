@@ -22,7 +22,7 @@ class SettingsGroupsMixin:
     """Manage account group operations."""
 
     def account_groups_keyboard(self, labels: list[dict[str, str]]) -> ReplyKeyboardMarkup:
-        return items_reply_keyboard(labels, ["+ group", "Back", "Cancel"], columns=2)
+        return items_reply_keyboard(labels, ["+ group", "Back", "Cancel"], columns=2, extra_columns=2)
 
     async def start_account_groups(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         user_id = update.effective_user.id
